@@ -1,4 +1,4 @@
-export const palette = {
+export const lightColors = {
   background: '#FBF5E7',
   backgroundRaised: '#F3EAD7',
   surface: '#FEFCF5',
@@ -19,6 +19,45 @@ export const palette = {
   informativeSoft: '#DCEFF4',
   white: '#FFFFFF',
 } as const;
+
+export type SemanticColors = { [Key in keyof typeof lightColors]: string };
+
+export const darkColors: SemanticColors = {
+  background: '#14231D',
+  backgroundRaised: '#1C3027',
+  surface: '#20352B',
+  surfaceStrong: '#294238',
+  ink: '#FFF8E8',
+  inkSecondary: '#D6E2D8',
+  muted: '#A7B5AA',
+  border: '#52675B',
+  borderSoft: '#3D5448',
+  action: '#FF8B68',
+  actionDeep: '#FFB29B',
+  actionSoft: '#59382F',
+  reward: '#F7D268',
+  rewardSoft: '#51462D',
+  positive: '#9BC38D',
+  positiveSoft: '#304A34',
+  informative: '#93D1E3',
+  informativeSoft: '#294751',
+  white: '#FFFFFF',
+};
+
+export const widgetColors = {
+  light: {
+    background: lightColors.rewardSoft,
+    title: lightColors.ink,
+    action: lightColors.actionDeep,
+  },
+  dark: {
+    background: darkColors.surface,
+    title: darkColors.ink,
+    action: darkColors.actionDeep,
+  },
+} as const;
+
+export const palette = lightColors;
 
 export const fonts = {
   displaySemiBold: 'BricolageGrotesque_600SemiBold',

@@ -15,7 +15,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { palette } from '@/constants/pomelo-theme';
+import { AppearanceProvider, useAppearance } from '@/appearance/appearance-provider';
+import { LocaleProvider } from '@/localization/locale-provider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -41,12 +42,24 @@ export default function RootLayout() {
   }
 
   return (
+    <LocaleProvider>
+      <AppearanceProvider>
+        <RootNavigator />
+      </AppearanceProvider>
+    </LocaleProvider>
+  );
+}
+
+function RootNavigator() {
+  const { colors, resolved } = useAppearance();
+
+  return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: palette.background },
+          contentStyle: { backgroundColor: colors.background },
         }}
       />
     </>
