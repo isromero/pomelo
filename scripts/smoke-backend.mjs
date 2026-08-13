@@ -14,11 +14,10 @@ function localEnvironment() {
 async function request(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
   if (!response.ok) {
     throw new Error(`Backend smoke request failed (${response.status})`);
   }
-  return body;
+  return text ? JSON.parse(text) : null;
 }
 
 const environment = localEnvironment();

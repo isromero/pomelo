@@ -52,6 +52,12 @@ export function RuntimeScreen() {
   }, [attempt]);
 
   useEffect(() => {
+    if (runtime.status === 'ready') {
+      return runtime.native.activate();
+    }
+  }, [runtime]);
+
+  useEffect(() => {
     try {
       PomeloStatusWidget.updateSnapshot({
         action: t('widget.action'),
@@ -61,12 +67,6 @@ export function RuntimeScreen() {
       captureDiagnostic({ area: 'widget', code: 'snapshot-failed', recoverable: true });
     }
   }, [t]);
-
-  useEffect(() => {
-    if (runtime.status === 'ready') {
-      return () => runtime.native.dispose();
-    }
-  }, [runtime]);
 
   if (runtime.status === 'configuration-error') {
     return <RecoverableError kind="configuration" onRetry={() => setAttempt((value) => value + 1)} />;

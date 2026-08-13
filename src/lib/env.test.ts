@@ -42,4 +42,40 @@ describe('parseEnvironment', () => {
       })
     ).toThrow('server-secret');
   });
+
+  it('rejects legacy server JWTs without relying on atob', () => {
+    const originalAtob = globalThis.atob;
+    Object.defineProperty(globalThis, 'atob', { configurable: true, value: undefined });
+
+    try {
+      expect(() =>
+        parseEnvironment({
+          ...validInput,
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+            'eyJhbGciOiJub25lIn0.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.',
+        })
+      ).toThrow('server-secret');
+    } finally {
+      Object.defineProperty(globalThis, 'atob', { configurable: true, value: originalAtob });
+    }
+  });
+
+  it('accepts a valid legacy anon JWT', () => {
+    expect(
+      parseEnvironment({
+        ...validInput,
+        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+          'eyJhbGciOiJub25lIn0.eyJyb2xlIjoiYW5vbiJ9.',
+      }).supabasePublishableKey
+    ).toBe('eyJhbGciOiJub25lIn0.eyJyb2xlIjoiYW5vbiJ9.');
+  });
+
+  it('rejects malformed legacy JWTs instead of accepting them as public', () => {
+    expect(() =>
+      parseEnvironment({
+        ...validInput,
+        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'eyJ.invalid-payload.',
+      })
+    ).toThrow('server-secret');
+  });
 });

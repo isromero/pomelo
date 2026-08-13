@@ -10,7 +10,7 @@ export type PomeloSupabaseClient = SupabaseClient<Database>;
 
 export type SupabaseRuntime = {
   client: PomeloSupabaseClient;
-  dispose(): void;
+  activate(): () => void;
 };
 
 export function createSupabaseRuntime(environment: Environment): SupabaseRuntime {
@@ -28,23 +28,25 @@ export function createSupabaseRuntime(environment: Environment): SupabaseRuntime
     }
   );
 
-  if (Platform.OS === 'web') {
-    return { client, dispose() {} };
-  }
-
-  const subscription = AppState.addEventListener('change', (state) => {
-    if (state === 'active') {
-      client.auth.startAutoRefresh();
-    } else {
-      client.auth.stopAutoRefresh();
-    }
-  });
-
   return {
     client,
-    dispose() {
-      subscription.remove();
-      client.auth.stopAutoRefresh();
+    activate() {
+      if (Platform.OS === 'web') {
+        return () => {};
+      }
+
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'active') {
+          client.auth.startAutoRefresh();
+        } else {
+          client.auth.stopAutoRefresh();
+        }
+      });
+
+      return () => {
+        subscription.remove();
+        client.auth.stopAutoRefresh();
+      };
     },
   };
 }

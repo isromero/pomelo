@@ -26,12 +26,41 @@ function isServerSecret(value: string): boolean {
 
   try {
     const payload = value.split('.')[1];
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const decoded = globalThis.atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
-    return JSON.parse(decoded).role === 'service_role';
+    return JSON.parse(decodeBase64Url(payload)).role !== 'anon';
   } catch {
-    return false;
+    return true;
   }
+}
+
+function decodeBase64Url(value: string): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+
+  if (normalized.length % 4 === 1) {
+    throw new Error('Invalid base64url value');
+  }
+
+  let buffer = 0;
+  let bufferedBits = 0;
+  let decoded = '';
+
+  for (const character of normalized) {
+    const index = alphabet.indexOf(character);
+    if (index === -1) {
+      throw new Error('Invalid base64url character');
+    }
+
+    buffer = (buffer << 6) | index;
+    bufferedBits += 6;
+
+    if (bufferedBits >= 8) {
+      bufferedBits -= 8;
+      decoded += String.fromCharCode((buffer >> bufferedBits) & 0xff);
+      buffer &= (1 << bufferedBits) - 1;
+    }
+  }
+
+  return decoded;
 }
 
 export function parseEnvironment(input: EnvironmentInput): Environment {
