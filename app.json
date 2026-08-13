@@ -6,11 +6,14 @@
     "orientation": "portrait",
     "icon": "./assets/images/app-icon.png",
     "scheme": "pomelo",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/app-icon.png"
+      "bundleIdentifier": "app.pomelo.mobile",
+      "icon": "./assets/images/app-icon.png",
+      "supportsTablet": true
     },
     "android": {
+      "package": "app.pomelo.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#FBF5E7",
         "foregroundImage": "./assets/images/pom/pom-symbol.png"
@@ -30,7 +33,35 @@
           "image": "./assets/images/pom/pom-symbol.png",
           "imageWidth": 124
         }
-      ]
+      ],
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["es", "en"],
+            "android": ["es", "en"]
+          }
+        }
+      ],
+      [
+        "expo-widgets",
+        {
+          "widgets": [
+            {
+              "name": "PomeloStatusWidget",
+              "displayName": "Pomelo Moment",
+              "description": "Open today's Pomelo Moment.",
+              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "contentMarginsDisabled": false,
+              "ios": {
+                "supportedFamilies": ["systemSmall", "systemMedium"]
+              },
+              "android": null
+            }
+          ]
+        }
+      ],
+      "./plugins/with-pomelo-android-widget"
     ],
     "experiments": {
       "typedRoutes": true,

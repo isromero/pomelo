@@ -2,7 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { fonts, palette } from '@/constants/pomelo-theme';
+import { useAppearance } from '@/appearance/appearance-provider';
+import { fonts, SemanticColors } from '@/constants/pomelo-theme';
+import { TranslationKey } from '@/localization/catalogs';
+import { useLocale } from '@/localization/locale-provider';
 
 type TabKey = 'home' | 'history' | 'map' | 'couple';
 
@@ -13,17 +16,20 @@ type BottomNavigationProps = {
 
 const tabs: {
   key: TabKey;
-  label: string;
+  label: TranslationKey;
   icon: keyof typeof Ionicons.glyphMap;
   activeIcon: keyof typeof Ionicons.glyphMap;
 }[] = [
-  { key: 'home', label: 'Inicio', icon: 'home-outline', activeIcon: 'home-outline' },
-  { key: 'history', label: 'Historia', icon: 'journal-outline', activeIcon: 'journal' },
-  { key: 'map', label: 'Mapa', icon: 'map-outline', activeIcon: 'map' },
-  { key: 'couple', label: 'Pareja', icon: 'heart-outline', activeIcon: 'heart' },
+  { key: 'home', label: 'nav.home', icon: 'home-outline', activeIcon: 'home-outline' },
+  { key: 'history', label: 'nav.history', icon: 'journal-outline', activeIcon: 'journal' },
+  { key: 'map', label: 'nav.map', icon: 'map-outline', activeIcon: 'map' },
+  { key: 'couple', label: 'nav.pair', icon: 'heart-outline', activeIcon: 'heart' },
 ];
 
 export function BottomNavigation({ activeTab = 'home', onSelect }: BottomNavigationProps) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
   const handlePress = (tab: TabKey) => {
     void Haptics.selectionAsync();
     onSelect?.(tab);
@@ -46,11 +52,11 @@ export function BottomNavigation({ activeTab = 'home', onSelect }: BottomNavigat
               pressed && styles.tabPressed,
             ]}>
             <Ionicons
-              color={isActive ? palette.action : palette.inkSecondary}
+              color={isActive ? colors.action : colors.inkSecondary}
               name={isActive ? tab.activeIcon : tab.icon}
               size={22}
             />
-            <Text style={[styles.label, isActive && styles.labelActive]}>{tab.label}</Text>
+            <Text style={[styles.label, isActive && styles.labelActive]}>{t(tab.label)}</Text>
           </Pressable>
         );
       })}
@@ -58,11 +64,11 @@ export function BottomNavigation({ activeTab = 'home', onSelect }: BottomNavigat
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: SemanticColors) => StyleSheet.create({
   bar: {
     alignItems: 'center',
-    backgroundColor: palette.surface,
-    borderColor: palette.border,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: 24,
     borderWidth: 1,
     elevation: 6,
@@ -71,7 +77,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 8,
     paddingVertical: 7,
-    shadowColor: palette.ink,
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
@@ -88,17 +94,17 @@ const styles = StyleSheet.create({
     width: 78,
   },
   tabActive: {
-    backgroundColor: palette.actionSoft,
+    backgroundColor: colors.actionSoft,
   },
   tabPressed: {
     opacity: 0.65,
   },
   label: {
-    color: palette.inkSecondary,
+    color: colors.inkSecondary,
     fontFamily: fonts.bodyBold,
     fontSize: 10,
   },
   labelActive: {
-    color: palette.action,
+    color: colors.action,
   },
 });

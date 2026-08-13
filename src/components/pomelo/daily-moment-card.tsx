@@ -2,7 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { fonts, palette, radii } from '@/constants/pomelo-theme';
+import { useAppearance } from '@/appearance/appearance-provider';
+import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
+import { TranslationKey } from '@/localization/catalogs';
+import { useLocale } from '@/localization/locale-provider';
 
 export type MomentState = 'answer' | 'waiting' | 'ready' | 'complete';
 
@@ -11,31 +14,35 @@ type DailyMomentCardProps = {
   onAction: () => void;
 };
 
-const stateContent: Record<MomentState, { chip: string; action?: string }> = {
-  answer: { chip: 'PREGUNTA', action: 'Responder' },
-  waiting: { chip: 'RESPONDIDO', action: 'Avisar a Lucía' },
-  ready: { chip: 'LISTO', action: 'Descubrir el Momento' },
-  complete: { chip: 'REVELADO' },
+const stateContent: Record<MomentState, { chip: TranslationKey; action?: TranslationKey }> = {
+  answer: { chip: 'moment.kind.question', action: 'moment.action.answer' },
+  waiting: { chip: 'moment.kind.answered', action: 'moment.action.remind' },
+  ready: { chip: 'moment.kind.ready', action: 'moment.action.reveal' },
+  complete: { chip: 'moment.kind.revealed' },
 };
 
 function QuestionPrompt({ compact = false }: { compact?: boolean }) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
   return (
     <View style={[styles.prompt, compact && styles.promptCompact]}>
-      <Text style={styles.promptLabel}>PREGUNTA DE HOY</Text>
-      <Text style={styles.question}>
-        ¿Qué pequeño gesto de Lucía te hizo sonreír esta semana?
-      </Text>
+      <Text style={styles.promptLabel}>{t('moment.promptLabel')}</Text>
+      <Text style={styles.question}>{t('moment.prompt')}</Text>
     </View>
   );
 }
 
 function OwnAnswer({ tall = false }: { tall?: boolean }) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
   return (
     <View style={[styles.messageRow, styles.messageRowOwn, tall && styles.messageRowTall]}>
       <View style={[styles.messageBubble, styles.ownBubble, tall && styles.messageBubbleTall]}>
-        <Text style={styles.sender}>TÚ</Text>
+        <Text style={styles.sender}>{t('moment.you')}</Text>
         <Text numberOfLines={1} style={styles.answerText}>
-          “El café que me dejaste preparado.”
+          {t('moment.ownAnswer')}
         </Text>
         <View style={[styles.bubbleTail, styles.ownTail]} />
       </View>
@@ -44,14 +51,15 @@ function OwnAnswer({ tall = false }: { tall?: boolean }) {
 }
 
 function PartnerAnswer({ locked = false }: { locked?: boolean }) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
   return (
     <View style={styles.messageRow}>
       <View style={[styles.messageBubble, styles.partnerBubble]}>
-        <Text style={styles.sender}>LUCÍA</Text>
+        <Text style={styles.sender}>{t('moment.partner')}</Text>
         <Text numberOfLines={locked ? 1 : 2} style={styles.answerText}>
-          {locked
-            ? '🔒 Respuesta lista · todavía oculta'
-            : '“Cuando me abrazaste al llegar a casa y preparaste la cena aunque habías tenido un día larguísimo.”'}
+          {locked ? t('moment.partnerLocked') : t('moment.partnerAnswer')}
         </Text>
         <View style={[styles.bubbleTail, styles.partnerTail]} />
       </View>
@@ -60,6 +68,8 @@ function PartnerAnswer({ locked = false }: { locked?: boolean }) {
 }
 
 function PrimaryAction({ label, onPress }: { label: string; onPress: () => void }) {
+  const { colors } = useAppearance();
+  const styles = createStyles(colors);
   return (
     <Pressable
       accessibilityRole="button"
@@ -71,6 +81,9 @@ function PrimaryAction({ label, onPress }: { label: string; onPress: () => void 
 }
 
 export function DailyMomentCard({ state, onAction }: DailyMomentCardProps) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
   const current = stateContent[state];
 
   const handleAction = () => {
@@ -82,9 +95,9 @@ export function DailyMomentCard({ state, onAction }: DailyMomentCardProps) {
     <View style={styles.card}>
       <View style={styles.meta}>
         <View style={styles.kindChip}>
-          <Text style={styles.kindText}>{current.chip}</Text>
+          <Text style={styles.kindText}>{t(current.chip)}</Text>
         </View>
-        <Text style={styles.metaText}>MOMENTO DE HOY</Text>
+        <Text style={styles.metaText}>{t('moment.today')}</Text>
       </View>
 
       <QuestionPrompt compact={state === 'ready' || state === 'complete'} />
@@ -92,13 +105,11 @@ export function DailyMomentCard({ state, onAction }: DailyMomentCardProps) {
       {state === 'answer' && (
         <>
           <View style={styles.systemMessage}>
-            <Ionicons color={palette.inkSecondary} name="lock-closed-outline" size={17} />
-            <Text style={styles.systemText}>
-              Responderéis sin ver la respuesta del otro.
-            </Text>
+            <Ionicons color={colors.inkSecondary} name="lock-closed-outline" size={17} />
+            <Text style={styles.systemText}>{t('moment.privacy')}</Text>
           </View>
           <View style={styles.pendingRow}>
-            <Text style={styles.pendingText}>Lucía aún no ha respondido</Text>
+            <Text style={styles.pendingText}>{t('moment.partnerPending')}</Text>
           </View>
         </>
       )}
@@ -107,8 +118,8 @@ export function DailyMomentCard({ state, onAction }: DailyMomentCardProps) {
         <>
           <OwnAnswer tall />
           <View style={styles.systemMessage}>
-            <Ionicons color={palette.inkSecondary} name="lock-closed-outline" size={17} />
-            <Text style={styles.systemText}>Respuesta guardada · esperando a Lucía</Text>
+            <Ionicons color={colors.inkSecondary} name="lock-closed-outline" size={17} />
+            <Text style={styles.systemText}>{t('moment.saved')}</Text>
           </View>
         </>
       )}
@@ -125,34 +136,34 @@ export function DailyMomentCard({ state, onAction }: DailyMomentCardProps) {
           <OwnAnswer />
           <PartnerAnswer />
           <View style={styles.replyComposer}>
-            <Text style={styles.replyPlaceholder}>Seguid hablando...</Text>
+            <Text style={styles.replyPlaceholder}>{t('moment.continue')}</Text>
             <Pressable
-              accessibilityLabel="Enviar respuesta"
+              accessibilityLabel={t('moment.send')}
               onPress={handleAction}
               style={({ pressed }) => [styles.sendButton, pressed && styles.actionPressed]}>
-              <Ionicons color={palette.surface} name="send-outline" size={18} />
+              <Ionicons color={colors.surface} name="send-outline" size={18} />
             </Pressable>
           </View>
         </>
       )}
 
-      {current.action && <PrimaryAction label={current.action} onPress={handleAction} />}
+      {current.action && <PrimaryAction label={t(current.action)} onPress={handleAction} />}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: SemanticColors) => StyleSheet.create({
   card: {
     alignItems: 'flex-start',
-    backgroundColor: palette.surface,
-    borderColor: palette.border,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: 28,
     borderWidth: 1,
     gap: 10,
     height: 418,
     overflow: 'hidden',
     padding: 18,
-    shadowColor: palette.ink,
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
     shadowRadius: 20,
@@ -167,25 +178,25 @@ const styles = StyleSheet.create({
   },
   kindChip: {
     alignItems: 'center',
-    backgroundColor: palette.actionSoft,
+    backgroundColor: colors.actionSoft,
     borderRadius: 14,
     height: 28,
     justifyContent: 'center',
     width: 94,
   },
   kindText: {
-    color: palette.action,
+    color: colors.action,
     fontFamily: fonts.bodyBold,
     fontSize: 10,
   },
   metaText: {
-    color: palette.inkSecondary,
+    color: colors.inkSecondary,
     fontFamily: fonts.bodyBold,
     fontSize: 10,
   },
   prompt: {
     alignItems: 'flex-start',
-    backgroundColor: palette.rewardSoft,
+    backgroundColor: colors.rewardSoft,
     borderRadius: 20,
     gap: 6,
     height: 116,
@@ -199,12 +210,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   promptLabel: {
-    color: palette.inkSecondary,
+    color: colors.inkSecondary,
     fontFamily: fonts.bodyBold,
     fontSize: 10,
   },
   question: {
-    color: palette.ink,
+    color: colors.ink,
     fontFamily: fonts.displayExtraBold,
     fontSize: 17,
     letterSpacing: -0.25,
@@ -213,8 +224,8 @@ const styles = StyleSheet.create({
   },
   systemMessage: {
     alignItems: 'center',
-    backgroundColor: palette.surface,
-    borderColor: palette.border,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: 'row',
@@ -224,7 +235,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   systemText: {
-    color: palette.inkSecondary,
+    color: colors.inkSecondary,
     fontFamily: fonts.body,
     fontSize: 11,
     width: 250,
@@ -236,7 +247,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   pendingText: {
-    color: palette.inkSecondary,
+    color: colors.inkSecondary,
     fontFamily: fonts.bodyBold,
     fontSize: 11,
   },
@@ -266,14 +277,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   ownBubble: {
-    backgroundColor: palette.actionSoft,
+    backgroundColor: colors.actionSoft,
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 5,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
   },
   partnerBubble: {
-    backgroundColor: palette.rewardSoft,
+    backgroundColor: colors.rewardSoft,
     borderBottomLeftRadius: 5,
     borderBottomRightRadius: 18,
     borderTopLeftRadius: 18,
@@ -287,21 +298,21 @@ const styles = StyleSheet.create({
     width: 10,
   },
   ownTail: {
-    backgroundColor: palette.actionSoft,
+    backgroundColor: colors.actionSoft,
     right: -3,
   },
   partnerTail: {
-    backgroundColor: palette.rewardSoft,
+    backgroundColor: colors.rewardSoft,
     left: -3,
     transform: [{ rotate: '-32deg' }],
   },
   sender: {
-    color: palette.inkSecondary,
+    color: colors.inkSecondary,
     fontFamily: fonts.bodyBold,
     fontSize: 10,
   },
   answerText: {
-    color: palette.ink,
+    color: colors.ink,
     fontFamily: fonts.bodyBold,
     fontSize: 13,
     lineHeight: 17,
@@ -309,7 +320,7 @@ const styles = StyleSheet.create({
   },
   action: {
     alignItems: 'center',
-    backgroundColor: palette.action,
+    backgroundColor: colors.action,
     borderRadius: radii.md,
     height: 56,
     justifyContent: 'center',
@@ -321,13 +332,13 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   actionText: {
-    color: palette.ink,
+    color: colors.ink,
     fontFamily: fonts.bodyBold,
     fontSize: 14,
   },
   replyComposer: {
     alignItems: 'center',
-    borderColor: palette.border,
+    borderColor: colors.border,
     borderRadius: 25,
     borderWidth: 1,
     flexDirection: 'row',
@@ -338,13 +349,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   replyPlaceholder: {
-    color: palette.muted,
+    color: colors.muted,
     fontFamily: fonts.body,
     fontSize: 12,
   },
   sendButton: {
     alignItems: 'center',
-    backgroundColor: palette.action,
+    backgroundColor: colors.action,
     borderRadius: 19,
     height: 38,
     justifyContent: 'center',
