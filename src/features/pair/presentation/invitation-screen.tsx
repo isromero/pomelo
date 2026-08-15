@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -209,7 +209,7 @@ export function InvitationScreen({ credential }: { credential: string }) {
   );
 }
 
-function InvitationShell({ children }: { children: React.ReactNode }) {
+function InvitationShell({ children }: { children: ReactNode }) {
   const { colors } = useAppearance();
   const styles = createStyles(colors);
   return (
