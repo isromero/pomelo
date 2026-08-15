@@ -137,7 +137,7 @@ function parseState(value: unknown): PairState {
       code,
       expiresAt,
       id: invitationId,
-      link: Linking.createURL(`invite/${token}`),
+      link: Linking.createURL('invite', { queryParams: { credential: token } }),
       status: invitationStatus,
       token,
     };
@@ -232,7 +232,11 @@ export class SupabasePairRepository implements PairRepository {
         { event: '*', schema: 'public', table: 'pair_invitations' },
         listener,
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          listener();
+        }
+      });
 
     return () => {
       void this.client.removeChannel(channel);

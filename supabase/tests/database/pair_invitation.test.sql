@@ -1,6 +1,6 @@
 begin;
 
-select plan(29);
+select plan(31);
 
 select has_table('public', 'pairs', 'Pair storage exists');
 select has_table('public', 'pair_memberships', 'Pair membership storage exists');
@@ -254,6 +254,23 @@ select is(
   (select count(*) from public.pair_memberships where user_id = '30000000-0000-4000-8000-000000000004'),
   0::bigint,
   'a full Pair rejection creates no partial membership'
+);
+
+select set_config('request.jwt.claim.sub', '30000000-0000-4000-8000-000000000003', true);
+insert into pair_test_results values ('waiting-archived', public.dissolve_pair());
+select is(
+  (select payload ->> 'status' from pair_test_results where label = 'waiting-archived'),
+  'archived',
+  'a creator can close a waiting Pair'
+);
+insert into pair_test_results values (
+  'replacement',
+  public.create_pair_with_invitation(date '2023-05-06')
+);
+select is(
+  (select payload ->> 'status' from pair_test_results where label = 'replacement'),
+  'waiting',
+  'an archived User can create a replacement Pair'
 );
 
 select set_config('request.jwt.claim.sub', '30000000-0000-4000-8000-000000000001', true);

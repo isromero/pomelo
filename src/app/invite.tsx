@@ -9,7 +9,10 @@ import { WelcomeScreen } from '@/features/account/presentation/welcome-screen';
 import { InvitationScreen } from '@/features/pair/presentation/invitation-screen';
 
 export default function InvitationRoute() {
-  const { credential } = useLocalSearchParams<{ credential: string }>();
+  const { credential: parameter } = useLocalSearchParams<{
+    credential?: string | string[];
+  }>();
+  const credential = Array.isArray(parameter) ? parameter[0] ?? '' : parameter ?? '';
   const { status } = useAccount();
 
   if (status === 'booting') {

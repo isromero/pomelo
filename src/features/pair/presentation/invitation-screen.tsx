@@ -194,6 +194,11 @@ export function InvitationScreen({ credential }: { credential: string }) {
             <Ionicons color={colors.actionDeep} name="alert-circle" size={19} />
             <Text style={styles.errorText}>{t(errorKeys[error])}</Text>
           </View>
+          <PrimaryButton
+            busy={busy}
+            label={t('common.retry')}
+            onPress={() => void controller.refresh()}
+          />
           <SecondaryButton
             label={t('invite.tryCode')}
             onPress={() => router.replace('/pair')}

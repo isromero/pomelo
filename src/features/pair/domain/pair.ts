@@ -15,6 +15,11 @@ export function formatInvitationCode(value: string) {
   return compact.length === 8 ? `${compact.slice(0, 4)}-${compact.slice(4)}` : value;
 }
 
+export function invitationExpiryDelay(value: string, now = Date.now()) {
+  const expiresAt = Date.parse(value);
+  return Number.isFinite(expiresAt) ? Math.max(0, expiresAt - now) : 0;
+}
+
 export function validateAnniversary(
   value: string,
   today = new Date(),

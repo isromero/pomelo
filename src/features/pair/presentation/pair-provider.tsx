@@ -6,6 +6,7 @@ import {
   useMemo,
   useSyncExternalStore,
 } from 'react';
+import { AppState } from 'react-native';
 
 import type { PomeloSupabaseClient } from '@/lib/supabase';
 import {
@@ -55,7 +56,15 @@ export function PairProvider({
   useEffect(() => {
     if (active) {
       void controller.start();
-      return () => controller.stop();
+      const appStateSubscription = AppState.addEventListener('change', (state) => {
+        if (state === 'active') {
+          void controller.refresh();
+        }
+      });
+      return () => {
+        appStateSubscription.remove();
+        controller.stop();
+      };
     }
     controller.stop();
     return undefined;

@@ -1,5 +1,6 @@
 import {
   formatInvitationCode,
+  invitationExpiryDelay,
   normalizeInvitationCredential,
   validateAnniversary,
 } from '@/features/pair/domain/pair';
@@ -26,5 +27,12 @@ describe('Pair domain', () => {
   it('rejects invalid and future anniversaries', () => {
     expect(validateAnniversary('2025-02-30', new Date(2026, 7, 15))).toBe('invalid');
     expect(validateAnniversary('2027-01-01', new Date(2026, 7, 15))).toBe('future');
+  });
+
+  it('reports when an Invitation should transition to expired', () => {
+    const now = Date.parse('2026-08-15T10:00:00.000Z');
+
+    expect(invitationExpiryDelay('2026-08-15T10:00:01.500Z', now)).toBe(1500);
+    expect(invitationExpiryDelay('2026-08-15T09:59:59.000Z', now)).toBe(0);
   });
 });

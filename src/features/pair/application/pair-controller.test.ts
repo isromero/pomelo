@@ -9,7 +9,7 @@ const invitation = {
   code: 'ABCD-EF12',
   expiresAt: '2026-08-22T10:00:00.000Z',
   id: 'invitation-1',
-  link: 'pomelo://invite/token-1',
+  link: 'pomelo://invite?credential=token-1',
   status: 'pending' as const,
   token: 'token-1',
 };
@@ -172,6 +172,27 @@ describe('PairController', () => {
     expect(controller.getSnapshot()).toMatchObject({ state: activeState, error: null });
   });
 
+  it('does not let a realtime refresh cancel an accepted Invitation', async () => {
+    const repository = new FakePairRepository();
+    repository.acceptInvitation = async () => {
+      repository.state = activeState;
+      repository.emitChange();
+      await Promise.resolve();
+      return activeState;
+    };
+    const controller = new PairController(repository);
+    await controller.start();
+
+    const accepted = await controller.acceptInvitation('abcd-ef12');
+
+    expect(accepted).toEqual(activeState);
+    expect(controller.getSnapshot()).toMatchObject({
+      busy: false,
+      error: null,
+      state: activeState,
+    });
+  });
+
   it('keeps a rejected Invitation recoverable without partial Pair state', async () => {
     const repository = new FakePairRepository();
     repository.acceptError = new PairError('invitationExpired');
@@ -214,5 +235,34 @@ describe('PairController', () => {
     await start;
 
     expect(controller.getSnapshot()).toMatchObject({ state: null, status: 'idle' });
+  });
+
+  it('keeps an initial load failure distinct from having no Pair', async () => {
+    const repository = new FakePairRepository();
+    let available = false;
+    repository.getState = async () => {
+      if (!available) {
+        throw new PairError('network');
+      }
+      return null;
+    };
+    const controller = new PairController(repository);
+
+    await controller.start();
+
+    expect(controller.getSnapshot()).toMatchObject({
+      error: 'network',
+      state: null,
+      status: 'error',
+    });
+
+    available = true;
+    await controller.refresh();
+
+    expect(controller.getSnapshot()).toMatchObject({
+      error: null,
+      state: null,
+      status: 'ready',
+    });
   });
 });

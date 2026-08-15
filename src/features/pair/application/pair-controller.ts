@@ -75,7 +75,7 @@ export interface PairRepository {
   subscribe(listener: () => void): () => void;
 }
 
-type PairControllerStatus = 'idle' | 'loading' | 'ready';
+type PairControllerStatus = 'error' | 'idle' | 'loading' | 'ready';
 
 export type PairSnapshot = {
   busy: boolean;
@@ -100,6 +100,7 @@ function errorCode(error: unknown): PairErrorCode {
 export class PairController {
   private listeners = new Set<() => void>();
   private operation = 0;
+  private refreshRequest = 0;
   private snapshot = initialSnapshot;
   private unsubscribeRepository: (() => void) | null = null;
 
@@ -113,23 +114,13 @@ export class PairController {
   };
 
   async start() {
-    const operation = ++this.operation;
+    this.operation += 1;
     this.unsubscribeRepository?.();
+    this.update({ busy: false, error: null, status: 'loading' });
     this.unsubscribeRepository = this.repository.subscribe(() => {
       void this.refresh();
     });
-    this.update({ busy: false, error: null, status: 'loading' });
-
-    try {
-      const state = await this.repository.getState();
-      if (operation === this.operation) {
-        this.update({ state, status: 'ready' });
-      }
-    } catch (error) {
-      if (operation === this.operation) {
-        this.update({ error: errorCode(error), status: 'ready' });
-      }
-    }
+    await this.refresh();
   }
 
   stop() {
@@ -145,15 +136,23 @@ export class PairController {
   }
 
   async refresh() {
-    const operation = ++this.operation;
+    const operation = this.operation;
+    const request = ++this.refreshRequest;
+    const recovering = this.snapshot.status === 'error';
+    if (recovering) {
+      this.update({ error: null, status: 'loading' });
+    }
     try {
       const state = await this.repository.getState();
-      if (operation === this.operation) {
+      if (operation === this.operation && request === this.refreshRequest) {
         this.update({ error: null, state, status: 'ready' });
       }
     } catch (error) {
-      if (operation === this.operation) {
-        this.update({ error: errorCode(error), status: 'ready' });
+      if (operation === this.operation && request === this.refreshRequest) {
+        this.update({
+          error: errorCode(error),
+          status: recovering || this.snapshot.status === 'loading' ? 'error' : 'ready',
+        });
       }
     }
   }

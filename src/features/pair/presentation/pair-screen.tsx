@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,7 @@ import type {
   PairState,
 } from '@/features/pair/application/pair-controller';
 import {
+  invitationExpiryDelay,
   normalizeInvitationCredential,
   validateAnniversary,
 } from '@/features/pair/domain/pair';
@@ -55,11 +56,22 @@ function formatDate(value: string, locale: 'en' | 'es') {
   }).format(new Date(year, month - 1, day, 12));
 }
 
+function formatTimestampDate(value: string, locale: 'en' | 'es') {
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
 export function PairScreen({ onSignOut }: { onSignOut(): void }) {
   const { colors } = useAppearance();
-  const { error, state, status } = usePair();
+  const { controller, error, state, status } = usePair();
   const { t } = useLocale();
   const styles = createStyles(colors);
+  const [replacingArchivedPairId, setReplacingArchivedPairId] = useState<
+    string | null
+  >(null);
 
   if (status === 'idle' || status === 'loading') {
     return (
@@ -71,6 +83,35 @@ export function PairScreen({ onSignOut }: { onSignOut(): void }) {
       </SafeAreaView>
     );
   }
+
+  if (status === 'error') {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.loading}>
+          <Ionicons color={colors.actionDeep} name="cloud-offline-outline" size={42} />
+          <Text style={styles.title}>{t('pair.loadFailure.title')}</Text>
+          <Text style={[styles.body, styles.centeredText]}>
+            {t('pair.loadFailure.body')}
+          </Text>
+          <ErrorBanner error={error} />
+          <PrimaryButton
+            icon="refresh"
+            label={t('common.retry')}
+            onPress={() => void controller.refresh()}
+          />
+          <TextButton
+            disabled={false}
+            label={t('common.signOut')}
+            onPress={onSignOut}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const replacingArchivedPair =
+    state?.status === 'archived' && state.id === replacingArchivedPairId;
+  const showSetup = !state || replacingArchivedPair;
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
@@ -89,17 +130,35 @@ export function PairScreen({ onSignOut }: { onSignOut(): void }) {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {!state && <PairSetup error={error} />}
+          {showSetup && (
+            <PairSetup
+              error={error}
+              onCancel={state?.status === 'archived'
+                ? () => setReplacingArchivedPairId(null)
+                : undefined}
+            />
+          )}
           {state?.status === 'waiting' && <WaitingPair error={error} state={state} />}
           {state?.status === 'active' && <ActivePair error={error} state={state} />}
-          {state?.status === 'archived' && <ArchivedPair state={state} />}
+          {state?.status === 'archived' && !replacingArchivedPair && (
+            <ArchivedPair
+              onCreatePair={() => setReplacingArchivedPairId(state.id)}
+              state={state}
+            />
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>
   );
 }
 
-function PairSetup({ error }: { error: PairErrorCode | null }) {
+function PairSetup({
+  error,
+  onCancel,
+}: {
+  error: PairErrorCode | null;
+  onCancel?: () => void;
+}) {
   const { colors } = useAppearance();
   const { controller, busy } = usePair();
   const { t } = useLocale();
@@ -113,6 +172,7 @@ function PairSetup({ error }: { error: PairErrorCode | null }) {
   if (mode === 'choice') {
     return (
       <View style={styles.content}>
+        {onCancel && <BackButton onPress={onCancel} />}
         <TitleBlock
           body={t('pair.setup.body')}
           eyebrow={t('pair.setup.eyebrow')}
@@ -225,7 +285,7 @@ function PairSetup({ error }: { error: PairErrorCode | null }) {
           setSubmitted(true);
           if (normalizedCode) {
             router.push({
-              pathname: '/invite/[credential]',
+              pathname: '/invite',
               params: { credential: normalizedCode },
             });
           }
@@ -243,6 +303,17 @@ function WaitingPair({ error, state }: { error: PairErrorCode | null; state: Pai
   const styles = createStyles(colors);
   const invitation = state.invitation;
   const isPending = invitation?.status === 'pending';
+
+  useEffect(() => {
+    if (!isPending || !invitation) {
+      return undefined;
+    }
+    const timeout = setTimeout(
+      () => void controller.refresh(),
+      invitationExpiryDelay(invitation.expiresAt) + 50,
+    );
+    return () => clearTimeout(timeout);
+  }, [controller, invitation, isPending]);
 
   const share = () => {
     if (!invitation) {
@@ -267,6 +338,17 @@ function WaitingPair({ error, state }: { error: PairErrorCode | null; state: Pai
     ]);
   };
 
+  const unlink = () => {
+    Alert.alert(t('pair.waiting.unlinkTitle'), t('pair.waiting.unlinkBody'), [
+      { style: 'cancel', text: t('common.cancel') },
+      {
+        onPress: () => void controller.dissolvePair(),
+        style: 'destructive',
+        text: t('pair.waiting.unlinkConfirm'),
+      },
+    ]);
+  };
+
   return (
     <View style={styles.content}>
       <TitleBlock
@@ -281,7 +363,8 @@ function WaitingPair({ error, state }: { error: PairErrorCode | null; state: Pai
             <Text style={styles.codeLabel}>{t('pair.waiting.code')}</Text>
             <Text selectable style={styles.code}>{invitation.code}</Text>
             <Text style={styles.meta}>
-              {t('pair.waiting.expires')} {formatDate(invitation.expiresAt, locale)}
+              {t('pair.waiting.expires')}{' '}
+              {formatTimestampDate(invitation.expiresAt, locale)}
             </Text>
           </>
         ) : (
@@ -316,6 +399,11 @@ function WaitingPair({ error, state }: { error: PairErrorCode | null; state: Pai
           onPress={() => void controller.createInvitation()}
         />
       )}
+      <TextButton
+        disabled={busy}
+        label={t('pair.waiting.unlink')}
+        onPress={unlink}
+      />
       <ErrorBanner error={error} />
     </View>
   );
@@ -371,7 +459,13 @@ function ActivePair({ error, state }: { error: PairErrorCode | null; state: Pair
   );
 }
 
-function ArchivedPair({ state }: { state: PairState }) {
+function ArchivedPair({
+  onCreatePair,
+  state,
+}: {
+  onCreatePair(): void;
+  state: PairState;
+}) {
   const { colors } = useAppearance();
   const { locale, t } = useLocale();
   const styles = createStyles(colors);
@@ -392,6 +486,11 @@ function ArchivedPair({ state }: { state: PairState }) {
           ))}
         </View>
       </View>
+      <PrimaryButton
+        icon="heart-outline"
+        label={t('pair.archive.newPair')}
+        onPress={onCreatePair}
+      />
     </View>
   );
 }
@@ -516,6 +615,7 @@ const createStyles = (colors: SemanticColors) =>
     headerButton: { alignItems: 'center', height: 42, justifyContent: 'center', width: 42 },
     scrollContent: { paddingBottom: 34 },
     loading: { alignItems: 'center', flex: 1, gap: 14, justifyContent: 'center', padding: 30 },
+    centeredText: { textAlign: 'center' },
     content: { gap: 18, paddingTop: 16 },
     titleBlock: { gap: 8 },
     eyebrow: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.9 },
