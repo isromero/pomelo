@@ -1,0 +1,556 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useAppearance } from '@/appearance/appearance-provider';
+import { Avatar } from '@/components/pomelo/avatar';
+import { fonts, radii, type SemanticColors } from '@/constants/pomelo-theme';
+import type {
+  PairErrorCode,
+  PairState,
+} from '@/features/pair/application/pair-controller';
+import {
+  normalizeInvitationCredential,
+  validateAnniversary,
+} from '@/features/pair/domain/pair';
+import { usePair } from '@/features/pair/presentation/pair-provider';
+import type { TranslationKey } from '@/localization/catalogs';
+import { useLocale } from '@/localization/locale-provider';
+
+type SetupMode = 'choice' | 'create' | 'join';
+
+const errorKeys: Record<PairErrorCode, TranslationKey> = {
+  alreadyPaired: 'pair.error.alreadyPaired',
+  configuration: 'pair.error.configuration',
+  invitationCancelled: 'pair.error.invitationCancelled',
+  invitationExpired: 'pair.error.invitationExpired',
+  invitationInvalid: 'pair.error.invitationInvalid',
+  invitationUsed: 'pair.error.invitationUsed',
+  invalidAnniversary: 'pair.error.invalidAnniversary',
+  network: 'pair.error.network',
+  notAllowed: 'pair.error.notAllowed',
+  pairFull: 'pair.error.pairFull',
+  profileIncomplete: 'pair.error.profileIncomplete',
+  unexpected: 'pair.error.unexpected',
+};
+
+function formatDate(value: string, locale: 'en' | 'es') {
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, day, 12));
+}
+
+export function PairScreen({ onSignOut }: { onSignOut(): void }) {
+  const { colors } = useAppearance();
+  const { error, state, status } = usePair();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+
+  if (status === 'idle' || status === 'loading') {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.loading}>
+          <ActivityIndicator color={colors.action} size="large" />
+          <Text style={styles.body}>{t('pair.loading')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
+      <View style={styles.shell}>
+        <View style={styles.header}>
+          <Text style={styles.wordmark}>pomelo.</Text>
+          <Pressable
+            accessibilityLabel={t('common.signOut')}
+            accessibilityRole="button"
+            onPress={onSignOut}
+            style={styles.headerButton}>
+            <Ionicons color={colors.inkSecondary} name="log-out-outline" size={21} />
+          </Pressable>
+        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          {!state && <PairSetup error={error} />}
+          {state?.status === 'waiting' && <WaitingPair error={error} state={state} />}
+          {state?.status === 'active' && <ActivePair error={error} state={state} />}
+          {state?.status === 'archived' && <ArchivedPair state={state} />}
+        </ScrollView>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function PairSetup({ error }: { error: PairErrorCode | null }) {
+  const { colors } = useAppearance();
+  const { controller, busy } = usePair();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+  const [mode, setMode] = useState<SetupMode>('choice');
+  const [anniversary, setAnniversary] = useState('');
+  const [code, setCode] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const anniversaryError = submitted ? validateAnniversary(anniversary) : null;
+
+  if (mode === 'choice') {
+    return (
+      <View style={styles.content}>
+        <TitleBlock
+          body={t('pair.setup.body')}
+          eyebrow={t('pair.setup.eyebrow')}
+          title={t('pair.setup.title')}
+        />
+        <View style={styles.illustration}>
+          <View style={styles.heartCircle}>
+            <Ionicons color={colors.action} name="heart" size={50} />
+          </View>
+          <View style={styles.twoBadge}>
+            <Text style={styles.twoBadgeText}>2</Text>
+          </View>
+        </View>
+        <PrimaryButton
+          icon="add"
+          label={t('pair.setup.create')}
+          onPress={() => {
+            controller.clearMessages();
+            setMode('create');
+          }}
+        />
+        <SecondaryButton
+          icon="key-outline"
+          label={t('pair.setup.join')}
+          onPress={() => {
+            controller.clearMessages();
+            setMode('join');
+          }}
+        />
+        <ErrorBanner error={error} />
+      </View>
+    );
+  }
+
+  if (mode === 'create') {
+    return (
+      <View style={styles.content}>
+        <BackButton onPress={() => setMode('choice')} />
+        <TitleBlock
+          body={t('pair.create.body')}
+          eyebrow={t('pair.create.eyebrow')}
+          title={t('pair.create.title')}
+        />
+        <View style={styles.card}>
+          <Text style={styles.label}>{t('pair.create.anniversary')}</Text>
+          <TextInput
+            accessibilityLabel={t('pair.create.anniversary')}
+            editable={!busy}
+            keyboardType="numbers-and-punctuation"
+            maxLength={10}
+            onChangeText={setAnniversary}
+            placeholder={t('pair.create.placeholder')}
+            placeholderTextColor={colors.muted}
+            style={[styles.input, anniversaryError && styles.inputError]}
+            value={anniversary}
+          />
+          {anniversaryError && (
+            <Text style={styles.validationError}>
+              {t(
+                anniversaryError === 'future'
+                  ? 'pair.create.future'
+                  : 'pair.create.invalid',
+              )}
+            </Text>
+          )}
+        </View>
+        <PrimaryButton
+          busy={busy}
+          icon="heart"
+          label={t('pair.create.submit')}
+          onPress={() => {
+            setSubmitted(true);
+            if (!validateAnniversary(anniversary)) {
+              void controller.createPair(anniversary);
+            }
+          }}
+        />
+        <ErrorBanner error={error} />
+      </View>
+    );
+  }
+
+  const normalizedCode = normalizeInvitationCredential(code);
+  return (
+    <View style={styles.content}>
+      <BackButton onPress={() => setMode('choice')} />
+      <TitleBlock
+        body={t('pair.join.body')}
+        eyebrow={t('pair.join.eyebrow')}
+        title={t('pair.join.title')}
+      />
+      <View style={styles.card}>
+        <Text style={styles.label}>{t('pair.join.code')}</Text>
+        <TextInput
+          accessibilityLabel={t('pair.join.code')}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={12}
+          onChangeText={setCode}
+          placeholder={t('pair.join.placeholder')}
+          placeholderTextColor={colors.muted}
+          style={[styles.input, submitted && !normalizedCode && styles.inputError]}
+          value={code}
+        />
+      </View>
+      <PrimaryButton
+        icon="arrow-forward"
+        label={t('pair.join.submit')}
+        onPress={() => {
+          setSubmitted(true);
+          if (normalizedCode) {
+            router.push({
+              pathname: '/invite/[credential]',
+              params: { credential: normalizedCode },
+            });
+          }
+        }}
+      />
+      <ErrorBanner error={error} />
+    </View>
+  );
+}
+
+function WaitingPair({ error, state }: { error: PairErrorCode | null; state: PairState }) {
+  const { colors } = useAppearance();
+  const { busy, controller } = usePair();
+  const { locale, t } = useLocale();
+  const styles = createStyles(colors);
+  const invitation = state.invitation;
+  const isPending = invitation?.status === 'pending';
+
+  const share = () => {
+    if (!invitation) {
+      return;
+    }
+    void Share.share({
+      message: `${t('pair.waiting.shareIntro')}\n${invitation.link}\n${t('pair.waiting.shareCode')}: ${invitation.code}`,
+    });
+  };
+
+  const cancel = () => {
+    if (!invitation) {
+      return;
+    }
+    Alert.alert(t('pair.waiting.cancelTitle'), t('pair.waiting.cancelBody'), [
+      { style: 'cancel', text: t('common.cancel') },
+      {
+        onPress: () => void controller.cancelInvitation(invitation.id),
+        style: 'destructive',
+        text: t('pair.waiting.cancelConfirm'),
+      },
+    ]);
+  };
+
+  return (
+    <View style={styles.content}>
+      <TitleBlock
+        body={t('pair.waiting.body')}
+        eyebrow={t('pair.waiting.eyebrow')}
+        title={t('pair.waiting.title')}
+      />
+      <View style={styles.invitationCard}>
+        <Ionicons color={colors.action} name="mail-open-outline" size={42} />
+        {isPending && invitation ? (
+          <>
+            <Text style={styles.codeLabel}>{t('pair.waiting.code')}</Text>
+            <Text selectable style={styles.code}>{invitation.code}</Text>
+            <Text style={styles.meta}>
+              {t('pair.waiting.expires')} {formatDate(invitation.expiresAt, locale)}
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.stateMessage}>
+            {t(
+              invitation?.status === 'expired'
+                ? 'pair.waiting.expired'
+                : 'pair.waiting.cancelled',
+            )}
+          </Text>
+        )}
+      </View>
+      {isPending ? (
+        <>
+          <PrimaryButton
+            busy={busy}
+            icon="share-outline"
+            label={t('pair.waiting.share')}
+            onPress={share}
+          />
+          <TextButton
+            disabled={busy}
+            label={t('pair.waiting.cancel')}
+            onPress={cancel}
+          />
+        </>
+      ) : (
+        <PrimaryButton
+          busy={busy}
+          icon="refresh"
+          label={t('pair.waiting.renew')}
+          onPress={() => void controller.createInvitation()}
+        />
+      )}
+      <ErrorBanner error={error} />
+    </View>
+  );
+}
+
+function ActivePair({ error, state }: { error: PairErrorCode | null; state: PairState }) {
+  const { colors } = useAppearance();
+  const { busy, controller } = usePair();
+  const { locale, t } = useLocale();
+  const styles = createStyles(colors);
+
+  const unlink = () => {
+    Alert.alert(t('pair.unlink.title'), t('pair.unlink.body'), [
+      { style: 'cancel', text: t('common.cancel') },
+      {
+        onPress: () => void controller.dissolvePair(),
+        style: 'destructive',
+        text: t('pair.unlink.confirm'),
+      },
+    ]);
+  };
+
+  return (
+    <View style={styles.content}>
+      <TitleBlock
+        body={t('pair.active.body')}
+        eyebrow={t('pair.active.eyebrow')}
+        title={t('pair.active.title')}
+      />
+      <View style={styles.card}>
+        <Text style={styles.codeLabel}>{t('pair.active.members')}</Text>
+        <View style={styles.memberList}>
+          {state.members.map((member) => (
+            <View key={member.userId} style={styles.member}>
+              <Avatar avatarKey={member.avatarKey} size={52} />
+              <Text style={styles.memberName}>{member.displayName}</Text>
+              <Ionicons color={colors.positive} name="checkmark-circle" size={20} />
+            </View>
+          ))}
+        </View>
+        <View style={styles.divider} />
+        <Text style={styles.codeLabel}>{t('pair.active.anniversary')}</Text>
+        <Text style={styles.anniversary}>{formatDate(state.anniversary, locale)}</Text>
+      </View>
+      <PrimaryButton
+        icon="sparkles-outline"
+        label={t('pair.active.openHome')}
+        onPress={() => router.replace('/home')}
+      />
+      <TextButton disabled={busy} label={t('pair.active.unlink')} onPress={unlink} />
+      <ErrorBanner error={error} />
+    </View>
+  );
+}
+
+function ArchivedPair({ state }: { state: PairState }) {
+  const { colors } = useAppearance();
+  const { locale, t } = useLocale();
+  const styles = createStyles(colors);
+
+  return (
+    <View style={styles.content}>
+      <TitleBlock
+        body={t('pair.archive.body')}
+        eyebrow={t('pair.archive.eyebrow')}
+        title={t('pair.archive.title')}
+      />
+      <View style={styles.archiveCard}>
+        <Ionicons color={colors.inkSecondary} name="archive-outline" size={42} />
+        <Text style={styles.anniversary}>{formatDate(state.anniversary, locale)}</Text>
+        <View style={styles.archiveMembers}>
+          {state.members.map((member) => (
+            <Avatar avatarKey={member.avatarKey} key={member.userId} size={48} />
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function TitleBlock({ body, eyebrow, title }: { body: string; eyebrow: string; title: string }) {
+  const { colors } = useAppearance();
+  const styles = createStyles(colors);
+  return (
+    <View style={styles.titleBlock}>
+      <Text style={styles.eyebrow}>{eyebrow}</Text>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.body}>{body}</Text>
+    </View>
+  );
+}
+
+function ErrorBanner({ error }: { error: PairErrorCode | null }) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+  if (!error) {
+    return null;
+  }
+  return (
+    <View style={styles.errorBanner}>
+      <Ionicons color={colors.actionDeep} name="alert-circle" size={19} />
+      <Text style={styles.errorText}>{t(errorKeys[error])}</Text>
+    </View>
+  );
+}
+
+function BackButton({ onPress }: { onPress(): void }) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.backButton}>
+      <Ionicons color={colors.inkSecondary} name="arrow-back" size={19} />
+      <Text style={styles.backText}>{t('common.back')}</Text>
+    </Pressable>
+  );
+}
+
+function PrimaryButton({
+  busy = false,
+  icon,
+  label,
+  onPress,
+}: {
+  busy?: boolean;
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress(): void;
+}) {
+  const { colors } = useAppearance();
+  const styles = createStyles(colors);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={busy}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.primaryButton,
+        busy && styles.disabled,
+        pressed && styles.pressed,
+      ]}>
+      {busy ? (
+        <ActivityIndicator color={colors.white} />
+      ) : (
+        <>
+          <Text style={styles.primaryButtonText}>{label}</Text>
+          <Ionicons color={colors.white} name={icon} size={19} />
+        </>
+      )}
+    </Pressable>
+  );
+}
+
+function SecondaryButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress(): void;
+}) {
+  const { colors } = useAppearance();
+  const styles = createStyles(colors);
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.secondaryButton}>
+      <Ionicons color={colors.actionDeep} name={icon} size={19} />
+      <Text style={styles.secondaryButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function TextButton({
+  disabled,
+  label,
+  onPress,
+}: {
+  disabled: boolean;
+  label: string;
+  onPress(): void;
+}) {
+  const { colors } = useAppearance();
+  const styles = createStyles(colors);
+  return (
+    <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress}>
+      <Text style={styles.textButton}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const createStyles = (colors: SemanticColors) =>
+  StyleSheet.create({
+    screen: { backgroundColor: colors.background, flex: 1 },
+    shell: { alignSelf: 'center', flex: 1, maxWidth: 430, paddingHorizontal: 22, width: '100%' },
+    header: { alignItems: 'center', flexDirection: 'row', height: 58, justifyContent: 'space-between' },
+    wordmark: { color: colors.ink, fontFamily: fonts.displayExtraBold, fontSize: 26, letterSpacing: -1.1 },
+    headerButton: { alignItems: 'center', height: 42, justifyContent: 'center', width: 42 },
+    scrollContent: { paddingBottom: 34 },
+    loading: { alignItems: 'center', flex: 1, gap: 14, justifyContent: 'center', padding: 30 },
+    content: { gap: 18, paddingTop: 16 },
+    titleBlock: { gap: 8 },
+    eyebrow: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.9 },
+    title: { color: colors.ink, fontFamily: fonts.displayExtraBold, fontSize: 34, letterSpacing: -1.2, lineHeight: 38 },
+    body: { color: colors.inkSecondary, fontFamily: fonts.body, fontSize: 13, lineHeight: 21 },
+    illustration: { alignItems: 'center', height: 180, justifyContent: 'center' },
+    heartCircle: { alignItems: 'center', backgroundColor: colors.actionSoft, borderRadius: 72, height: 144, justifyContent: 'center', width: 144 },
+    twoBadge: { alignItems: 'center', backgroundColor: colors.reward, borderColor: colors.background, borderRadius: 20, borderWidth: 4, bottom: 18, height: 40, justifyContent: 'center', position: 'absolute', right: 96, width: 40 },
+    twoBadgeText: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 17 },
+    card: { backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: radii.lg, borderWidth: 1, gap: 12, padding: 18 },
+    label: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 11 },
+    input: { backgroundColor: colors.surfaceStrong, borderColor: colors.borderSoft, borderRadius: radii.md, borderWidth: 1, color: colors.ink, fontFamily: fonts.bodySemiBold, fontSize: 16, height: 54, letterSpacing: 0.6, paddingHorizontal: 15 },
+    inputError: { borderColor: colors.actionDeep },
+    validationError: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 16 },
+    primaryButton: { alignItems: 'center', backgroundColor: colors.action, borderRadius: radii.full, flexDirection: 'row', gap: 9, height: 56, justifyContent: 'center' },
+    primaryButtonText: { color: colors.white, fontFamily: fonts.bodyBold, fontSize: 13 },
+    secondaryButton: { alignItems: 'center', backgroundColor: colors.actionSoft, borderRadius: radii.full, flexDirection: 'row', gap: 9, height: 54, justifyContent: 'center' },
+    secondaryButtonText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 13 },
+    textButton: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 12, padding: 10, textAlign: 'center' },
+    backButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 7, paddingVertical: 6 },
+    backText: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 12 },
+    invitationCard: { alignItems: 'center', backgroundColor: colors.rewardSoft, borderRadius: radii.lg, gap: 9, padding: 24 },
+    codeLabel: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.7 },
+    code: { color: colors.ink, fontFamily: fonts.displayExtraBold, fontSize: 32, letterSpacing: 2 },
+    meta: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 10, textAlign: 'center' },
+    stateMessage: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 20, textAlign: 'center' },
+    errorBanner: { alignItems: 'flex-start', backgroundColor: colors.actionSoft, borderRadius: radii.md, flexDirection: 'row', gap: 9, padding: 14 },
+    errorText: { color: colors.inkSecondary, flex: 1, fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 17 },
+    memberList: { gap: 10 },
+    member: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+    memberName: { color: colors.ink, flex: 1, fontFamily: fonts.bodyBold, fontSize: 14 },
+    divider: { backgroundColor: colors.borderSoft, height: StyleSheet.hairlineWidth },
+    anniversary: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 20 },
+    archiveCard: { alignItems: 'center', backgroundColor: colors.backgroundRaised, borderRadius: radii.lg, gap: 15, padding: 28 },
+    archiveMembers: { flexDirection: 'row', gap: 8 },
+    disabled: { opacity: 0.55 },
+    pressed: { opacity: 0.72 },
+  });

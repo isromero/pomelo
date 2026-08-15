@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,10 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppearance } from '@/appearance/appearance-provider';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { DailyMomentCard, MomentState } from '@/components/pomelo/daily-moment-card';
+import { Avatar } from '@/components/pomelo/avatar';
 import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
 import type { AvatarKey } from '@/features/account/domain/profile';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { Avatar } from '@/features/account/presentation/avatar';
 import { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 
@@ -126,7 +127,13 @@ export function HomeScreen() {
           </View>
         </ScrollView>
 
-        <BottomNavigation />
+        <BottomNavigation
+          onSelect={(tab) => {
+            if (tab === 'couple') {
+              router.push('/pair');
+            }
+          }}
+        />
       </View>
     </SafeAreaView>
   );

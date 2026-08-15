@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/pomelo/avatar';
 import { fonts, palette, radii } from '@/constants/pomelo-theme';
 import {
   appearanceValues,
@@ -33,7 +34,6 @@ import {
   deviceLocale,
   errorCopy,
 } from '@/features/account/presentation/account-copy';
-import { Avatar } from '@/features/account/presentation/avatar';
 
 const minimumBirthDate = new Date(1900, 0, 1, 12);
 const defaultBirthDate = new Date(2000, 0, 1, 12);

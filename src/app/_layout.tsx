@@ -13,10 +13,15 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { type PropsWithChildren, useEffect } from 'react';
 
 import { AppearanceProvider, useAppearance } from '@/appearance/appearance-provider';
-import { AccountProvider } from '@/features/account/presentation/account-provider';
+import {
+  AccountProvider,
+  useAccount,
+  useAccountClient,
+} from '@/features/account/presentation/account-provider';
+import { PairProvider } from '@/features/pair/presentation/pair-provider';
 import { LocaleProvider } from '@/localization/locale-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -46,10 +51,22 @@ export default function RootLayout() {
     <LocaleProvider>
       <AppearanceProvider>
         <AccountProvider>
-          <RootNavigator />
+          <PairRuntime>
+            <RootNavigator />
+          </PairRuntime>
         </AccountProvider>
       </AppearanceProvider>
     </LocaleProvider>
+  );
+}
+
+function PairRuntime({ children }: PropsWithChildren) {
+  const client = useAccountClient();
+  const { status } = useAccount();
+  return (
+    <PairProvider active={status === 'ready'} client={client}>
+      {children}
+    </PairProvider>
   );
 }
 

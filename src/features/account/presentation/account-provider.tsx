@@ -2,8 +2,14 @@ import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, 
 
 import type { AccountController } from '@/features/account/application/account-controller';
 import { createAccountRuntime } from '@/features/account/infrastructure/create-account-controller';
+import type { PomeloSupabaseClient } from '@/lib/supabase';
 
-const AccountContext = createContext<AccountController | null>(null);
+type AccountContextValue = {
+  client: PomeloSupabaseClient | null;
+  controller: AccountController;
+};
+
+const AccountContext = createContext<AccountContextValue | null>(null);
 
 export function AccountProvider({ children }: PropsWithChildren) {
   const runtime = useMemo(() => createAccountRuntime(), []);
@@ -18,14 +24,19 @@ export function AccountProvider({ children }: PropsWithChildren) {
     };
   }, [controller, runtime]);
 
-  return <AccountContext.Provider value={controller}>{children}</AccountContext.Provider>;
+  return (
+    <AccountContext.Provider value={{ client: runtime.client, controller }}>
+      {children}
+    </AccountContext.Provider>
+  );
 }
 
 export function useAccount() {
-  const controller = useContext(AccountContext);
-  if (!controller) {
+  const value = useContext(AccountContext);
+  if (!value) {
     throw new Error('useAccount must be used within AccountProvider');
   }
+  const { controller } = value;
 
   const snapshot = useSyncExternalStore(
     controller.subscribe,
@@ -34,4 +45,12 @@ export function useAccount() {
   );
 
   return { controller, ...snapshot };
+}
+
+export function useAccountClient() {
+  const value = useContext(AccountContext);
+  if (!value) {
+    throw new Error('useAccountClient must be used within AccountProvider');
+  }
+  return value.client;
 }

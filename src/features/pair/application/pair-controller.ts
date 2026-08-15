@@ -1,0 +1,240 @@
+import {
+  normalizeInvitationCredential,
+  validateAnniversary,
+} from '@/features/pair/domain/pair';
+
+export type PairStatus = 'active' | 'archived' | 'waiting';
+export type InvitationStatus = 'accepted' | 'cancelled' | 'expired' | 'pending';
+
+export type PairMember = {
+  avatarKey: 'affectionate' | 'calm' | 'surprised';
+  displayName: string;
+  role: 'creator' | 'member';
+  userId: string;
+};
+
+export type PairInvitation = {
+  code: string;
+  expiresAt: string;
+  id: string;
+  link: string;
+  status: InvitationStatus;
+  token: string;
+};
+
+export type PairState = {
+  anniversary: string;
+  id: string;
+  invitation: PairInvitation | null;
+  members: PairMember[];
+  status: PairStatus;
+};
+
+export type InvitationPreviewStatus =
+  | 'cancelled'
+  | 'expired'
+  | 'invalid'
+  | 'pairFull'
+  | 'used'
+  | 'valid';
+
+export type InvitationPreview = {
+  anniversary: string | null;
+  creatorName: string | null;
+  status: InvitationPreviewStatus;
+};
+
+export type PairErrorCode =
+  | 'alreadyPaired'
+  | 'configuration'
+  | 'invitationCancelled'
+  | 'invitationExpired'
+  | 'invitationInvalid'
+  | 'invitationUsed'
+  | 'invalidAnniversary'
+  | 'network'
+  | 'notAllowed'
+  | 'pairFull'
+  | 'profileIncomplete'
+  | 'unexpected';
+
+export class PairError extends Error {
+  constructor(public readonly code: PairErrorCode) {
+    super(code);
+  }
+}
+
+export interface PairRepository {
+  acceptInvitation(credential: string): Promise<PairState>;
+  cancelInvitation(invitationId: string): Promise<PairState>;
+  createInvitation(): Promise<PairState>;
+  createPair(anniversary: string): Promise<PairState>;
+  dissolvePair(): Promise<PairState>;
+  getState(): Promise<PairState | null>;
+  previewInvitation(credential: string): Promise<InvitationPreview>;
+  subscribe(listener: () => void): () => void;
+}
+
+type PairControllerStatus = 'idle' | 'loading' | 'ready';
+
+export type PairSnapshot = {
+  busy: boolean;
+  error: PairErrorCode | null;
+  preview: InvitationPreview | null;
+  state: PairState | null;
+  status: PairControllerStatus;
+};
+
+const initialSnapshot: PairSnapshot = {
+  busy: false,
+  error: null,
+  preview: null,
+  state: null,
+  status: 'idle',
+};
+
+function errorCode(error: unknown): PairErrorCode {
+  return error instanceof PairError ? error.code : 'unexpected';
+}
+
+export class PairController {
+  private listeners = new Set<() => void>();
+  private operation = 0;
+  private snapshot = initialSnapshot;
+  private unsubscribeRepository: (() => void) | null = null;
+
+  constructor(private readonly repository: PairRepository) {}
+
+  getSnapshot = () => this.snapshot;
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  async start() {
+    const operation = ++this.operation;
+    this.unsubscribeRepository?.();
+    this.unsubscribeRepository = this.repository.subscribe(() => {
+      void this.refresh();
+    });
+    this.update({ busy: false, error: null, status: 'loading' });
+
+    try {
+      const state = await this.repository.getState();
+      if (operation === this.operation) {
+        this.update({ state, status: 'ready' });
+      }
+    } catch (error) {
+      if (operation === this.operation) {
+        this.update({ error: errorCode(error), status: 'ready' });
+      }
+    }
+  }
+
+  stop() {
+    this.operation += 1;
+    this.unsubscribeRepository?.();
+    this.unsubscribeRepository = null;
+    this.snapshot = initialSnapshot;
+    this.emit();
+  }
+
+  clearMessages() {
+    this.update({ error: null, preview: null });
+  }
+
+  async refresh() {
+    const operation = ++this.operation;
+    try {
+      const state = await this.repository.getState();
+      if (operation === this.operation) {
+        this.update({ error: null, state, status: 'ready' });
+      }
+    } catch (error) {
+      if (operation === this.operation) {
+        this.update({ error: errorCode(error), status: 'ready' });
+      }
+    }
+  }
+
+  async createPair(anniversary: string) {
+    if (validateAnniversary(anniversary)) {
+      this.update({ error: 'invalidAnniversary' });
+      return;
+    }
+    await this.runStateOperation(() => this.repository.createPair(anniversary));
+  }
+
+  async createInvitation() {
+    await this.runStateOperation(() => this.repository.createInvitation());
+  }
+
+  async cancelInvitation(invitationId: string) {
+    await this.runStateOperation(() =>
+      this.repository.cancelInvitation(invitationId),
+    );
+  }
+
+  async previewInvitation(credential: string) {
+    const normalized = normalizeInvitationCredential(credential);
+    if (!normalized) {
+      this.update({ error: 'invitationInvalid', preview: null });
+      return;
+    }
+
+    const operation = ++this.operation;
+    this.update({ busy: true, error: null, preview: null });
+    try {
+      const preview = await this.repository.previewInvitation(normalized);
+      if (operation === this.operation) {
+        this.update({ busy: false, preview });
+      }
+    } catch (error) {
+      if (operation === this.operation) {
+        this.update({ busy: false, error: errorCode(error) });
+      }
+    }
+  }
+
+  async acceptInvitation(credential: string) {
+    const normalized = normalizeInvitationCredential(credential);
+    if (!normalized) {
+      this.update({ error: 'invitationInvalid' });
+      return null;
+    }
+    return this.runStateOperation(() =>
+      this.repository.acceptInvitation(normalized),
+    );
+  }
+
+  async dissolvePair() {
+    await this.runStateOperation(() => this.repository.dissolvePair());
+  }
+
+  private async runStateOperation(operation: () => Promise<PairState>) {
+    const operationId = ++this.operation;
+    this.update({ busy: true, error: null });
+    try {
+      const state = await operation();
+      if (operationId === this.operation) {
+        this.update({ busy: false, preview: null, state, status: 'ready' });
+        return state;
+      }
+    } catch (error) {
+      if (operationId === this.operation) {
+        this.update({ busy: false, error: errorCode(error), status: 'ready' });
+      }
+    }
+    return null;
+  }
+
+  private update(patch: Partial<PairSnapshot>) {
+    this.snapshot = { ...this.snapshot, ...patch };
+    this.emit();
+  }
+
+  private emit() {
+    this.listeners.forEach((listener) => listener());
+  }
+}
