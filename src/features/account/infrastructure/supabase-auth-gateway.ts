@@ -162,20 +162,30 @@ export class SupabaseAuthGateway implements AuthGateway {
       if (error) {
         throw accountError(error);
       }
+      if (!data.session) {
+        throw new AccountError('unexpected');
+      }
 
       const fullName = credential.fullName
         ? AppleAuthentication.formatFullName(credential.fullName)
         : '';
+      const session = authSession(data.session);
       if (fullName) {
         const { error: updateError } = await this.client.auth.updateUser({
           data: { full_name: fullName },
         });
         if (!updateError) {
-          data.session.user.user_metadata.full_name = fullName;
+          return {
+            cancelled: false,
+            session: {
+              ...session,
+              user: { ...session.user, displayNameHint: fullName },
+            },
+          };
         }
       }
 
-      return { cancelled: false, session: authSession(data.session) };
+      return { cancelled: false, session };
     } catch (error) {
       if (isAppleCancellation(error)) {
         return { cancelled: true, session: null };
@@ -209,6 +219,9 @@ export class SupabaseAuthGateway implements AuthGateway {
       });
       if (error) {
         throw accountError(error);
+      }
+      if (!data.session) {
+        throw new AccountError('unexpected');
       }
 
       return { cancelled: false, session: authSession(data.session) };

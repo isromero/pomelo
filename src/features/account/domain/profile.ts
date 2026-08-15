@@ -8,7 +8,7 @@ export type AvatarKey = (typeof avatarKeys)[number];
 
 export type ProfileInput = {
   appearance: Appearance;
-  avatarKey: string;
+  avatarKey: AvatarKey;
   birthDate: string;
   displayName: string;
   locale: Locale;
@@ -18,8 +18,14 @@ export type Profile = ProfileInput & {
   userId: string;
 };
 
+export type ProfileDraft = Omit<ProfileInput, 'appearance' | 'avatarKey' | 'locale'> & {
+  appearance: string;
+  avatarKey: string;
+  locale: string;
+};
+
 export type ProfileValidationErrors = Partial<
-  Record<keyof ProfileInput, 'future' | 'invalid' | 'required'>
+  Record<keyof ProfileDraft, 'future' | 'invalid' | 'required'>
 >;
 
 const dateOnlyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -56,7 +62,7 @@ export function parseDateOnly(value: string) {
 }
 
 export function validateProfileInput(
-  input: ProfileInput,
+  input: ProfileDraft,
   today = new Date(),
 ): ProfileValidationErrors {
   const errors: ProfileValidationErrors = {};
@@ -73,10 +79,10 @@ export function validateProfileInput(
   } else if (formatDateOnly(birthDate) > formatDateOnly(today)) {
     errors.birthDate = 'future';
   }
-  if (!localeValues.includes(input.locale)) {
+  if (!localeValues.includes(input.locale as Locale)) {
     errors.locale = 'invalid';
   }
-  if (!appearanceValues.includes(input.appearance)) {
+  if (!appearanceValues.includes(input.appearance as Appearance)) {
     errors.appearance = 'invalid';
   }
 

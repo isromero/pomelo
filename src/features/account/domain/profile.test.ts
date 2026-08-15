@@ -27,11 +27,11 @@ describe('Profile validation', () => {
     expect(
       validateProfileInput(
         {
-          appearance: 'sepia' as 'system',
+          appearance: 'sepia',
           avatarKey: 'calm',
           birthDate: '2026-08-14',
           displayName: 'Irene',
-          locale: 'fr' as 'es',
+          locale: 'fr',
         },
         new Date(2026, 7, 13),
       ),

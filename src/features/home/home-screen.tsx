@@ -99,7 +99,7 @@ export function HomeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
           <AppHeader
-            avatarKey={(profile?.avatarKey ?? 'calm') as AvatarKey}
+            avatarKey={profile?.avatarKey ?? 'calm'}
             onSignOut={() => void controller.signOut()}
           />
 
