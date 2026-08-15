@@ -1,3 +1,3 @@
-import { RuntimeScreen } from '@/features/session/runtime-screen';
+import { WidgetEntryScreen } from '@/features/account/presentation/widget-entry-screen';
 
-export default RuntimeScreen;
+export default WidgetEntryScreen;

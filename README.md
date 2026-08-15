@@ -2,6 +2,12 @@
 
 Pomelo is an Expo SDK 57 application backed by Supabase. Development uses native development builds because the baseline includes iOS and Android widgets.
 
+## Architecture
+
+Pomelo uses a feature-based architecture with lightweight layers inspired by Clean Architecture and Ports and Adapters. Product code belongs under `src/features/<feature>/`; a feature introduces `domain`, `application`, `infrastructure`, or `presentation` only when that separation has a concrete purpose.
+
+The complete dependency rules and placement guide live in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## Clean checkout setup
 
 Prerequisites: Node.js 22+, Docker Desktop, Xcode 26.4+ for iOS, and Android Studio with its bundled JDK plus the Android 36 SDK for Android.
@@ -14,6 +20,8 @@ cp .env.example .env.local
 ```
 
 Copy `API_URL` into `EXPO_PUBLIC_SUPABASE_URL` and `PUBLISHABLE_KEY` (or the legacy `ANON_KEY`) into `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Only those public values belong in the client environment. Never expose `SECRET_KEY`, `SERVICE_ROLE_KEY`, database passwords, or access tokens through an `EXPO_PUBLIC_` variable.
+
+The printed API URL uses `127.0.0.1`, which works from the iOS simulator. Android Emulator must use `10.0.2.2` as the hostname. A physical device must use the development machine's LAN address and be able to reach the Supabase ports through the local firewall.
 
 Rebuild the deterministic local database and verify it:
 
@@ -47,11 +55,37 @@ npx eas-cli build --profile development --platform android
 
 Native dependency or app configuration changes require a new development build. The generated `ios/` and `android/` folders are intentionally ignored; Expo Continuous Native Generation recreates them from `app.json` and the versioned config plugin.
 
-## Sign-in baseline
+## Account and Profile
 
-Create a User from local Supabase Studio at `http://127.0.0.1:54323`, then sign in from the app. Auth persists the session in native AsyncStorage. The UI reaches Supabase only through `SessionRepository`; the Supabase implementation reads the authenticated User's Profile under RLS, while tests can use the deterministic fake implementation.
+The app supports email sign-up, sign-in, session restoration, Profile completion, and logout. Auth persists the session in native AsyncStorage. Account UI reaches Supabase through feature gateways and repositories; Profile reads and updates remain protected by owner-only RLS.
+
+Local email sign-up creates a session immediately. Hosted Supabase projects can require email confirmation; after sign-up the User confirms the received link and returns to the explicit sign-in path.
 
 Startup configuration, connectivity, and session errors are recoverable and emit category/code diagnostics only. Credentials, Profile fields, tokens, and backend error payloads are never logged.
+
+Social authentication remains disabled by default while its external provisioning is pending. Keep `EXPO_PUBLIC_APPLE_AUTH_ENABLED` and `EXPO_PUBLIC_GOOGLE_AUTH_ENABLED` set to `false` until the corresponding provider passes end-to-end verification. Google additionally requires a valid `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` before its button is shown.
+
+### Sign in with Apple
+
+Before enabling Apple authentication:
+
+1. Register the final `app.pomelo.mobile` App ID with Sign in with Apple in Apple Developer.
+2. Register the native App ID as an accepted Client ID in Supabase Auth.
+3. Verify sign-up, login, cancellation, and Profile recovery on a physical iPhone.
+4. Set `EXPO_PUBLIC_APPLE_AUTH_ENABLED=true` and rebuild the native app.
+
+### Sign in with Google on Android
+
+Android uses Credential Manager through `react-native-nitro-google-signin`. Before enabling it:
+
+1. Create Web and Android OAuth clients in one Google Cloud project.
+2. Configure the Android client with package `app.pomelo.mobile` and every development or release signing SHA-1.
+3. Put the Web Client ID in `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+4. Configure the Google provider in Supabase with its Web Client ID and secret, keeping nonce verification enabled.
+5. Verify sign-up, login, cancellation, and Profile recovery on Android.
+6. Set `EXPO_PUBLIC_GOOGLE_AUTH_ENABLED=true` and rebuild the native app.
+
+Never place an OAuth Client Secret, Apple `.p8`, service-role key, or other private credential in an `EXPO_PUBLIC_*` variable.
 
 ## Locale and appearance
 

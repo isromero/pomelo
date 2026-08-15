@@ -50,5 +50,6 @@ Convertir el conjunto de slices en una candidata publicable y demostrable. Verif
 - [18 - Onboarding de valor basado en el producto real](18-onboarding-de-valor.md)
 - [19 - Ajustes, privacidad y flujos destructivos completos](19-ajustes-privacidad-y-eliminacion.md)
 - [20 - Localización ES/EN y temas claro/oscuro](20-localizacion-y-temas.md)
+- [22 - Provisioning y verificacion de autenticacion social](22-provisioning-auth-social.md)
 
 ## Comments
