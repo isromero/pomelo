@@ -115,20 +115,7 @@ export function SessionBoundary({ repository }: { repository: SessionRepository 
     return <SignInScreen onAuthenticated={setState} repository={repository} />;
   }
 
-  return (
-    <HomeScreen
-      profileName={state.profile.displayName}
-      onSignOut={() =>
-        void repository
-          .signOut()
-          .then(() => setState({ status: 'signed-out' }))
-          .catch(() => {
-            captureDiagnostic({ area: 'session', code: 'sign-out-failed', recoverable: true });
-            setError(true);
-          })
-      }
-    />
-  );
+  return <HomeScreen />;
 }
 
 function LoadingScreen() {

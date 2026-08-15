@@ -7,6 +7,9 @@ import { useAppearance } from '@/appearance/appearance-provider';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { DailyMomentCard, MomentState } from '@/components/pomelo/daily-moment-card';
 import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
+import type { AvatarKey } from '@/features/account/domain/profile';
+import { useAccount } from '@/features/account/presentation/account-provider';
+import { Avatar } from '@/features/account/presentation/avatar';
 import { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 
@@ -49,7 +52,7 @@ const heroCopy: Record<
   },
 };
 
-function AppHeader({ onSignOut, profileName }: { onSignOut?(): void; profileName: string }) {
+function AppHeader({ avatarKey, onSignOut }: { avatarKey: AvatarKey; onSignOut(): void }) {
   const { colors } = useAppearance();
   const { t } = useLocale();
   const styles = createStyles(colors);
@@ -64,24 +67,20 @@ function AppHeader({ onSignOut, profileName }: { onSignOut?(): void; profileName
         </View>
 
         <Pressable
-          accessibilityLabel={onSignOut ? t('common.signOut') : t('home.openProfile')}
+          accessibilityLabel={t('common.signOut')}
+          accessibilityRole="button"
           onPress={onSignOut}
           style={styles.avatar}>
-          <Text style={styles.avatarText}>{profileName.slice(0, 1).toUpperCase()}</Text>
+          <Avatar avatarKey={avatarKey} size={40} />
         </Pressable>
       </View>
     </View>
   );
 }
 
-export function HomeScreen({
-  onSignOut,
-  profileName = 'I',
-}: {
-  onSignOut?(): void;
-  profileName?: string;
-}) {
+export function HomeScreen() {
   const { colors } = useAppearance();
+  const { controller, profile } = useAccount();
   const { t } = useLocale();
   const styles = createStyles(colors);
   const [momentState, setMomentState] = useState<MomentState>('answer');
@@ -99,7 +98,10 @@ export function HomeScreen({
           bounces={false}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          <AppHeader onSignOut={onSignOut} profileName={profileName} />
+          <AppHeader
+            avatarKey={(profile?.avatarKey ?? 'calm') as AvatarKey}
+            onSignOut={() => void controller.signOut()}
+          />
 
           <View style={styles.homeContent}>
             <Text style={styles.date}>{t('home.date')}</Text>
@@ -187,18 +189,11 @@ const createStyles = (colors: SemanticColors) => StyleSheet.create({
   },
   avatar: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
     borderRadius: 20,
-    borderWidth: 1,
     height: 40,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 40,
-  },
-  avatarText: {
-    color: colors.inkSecondary,
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
   },
   homeContent: {
     gap: 14,

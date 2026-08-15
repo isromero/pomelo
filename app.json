@@ -10,7 +10,8 @@
     "ios": {
       "bundleIdentifier": "app.pomelo.mobile",
       "icon": "./assets/images/app-icon.png",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "app.pomelo.mobile",
@@ -38,8 +39,14 @@
         "expo-localization",
         {
           "supportedLocales": {
-            "ios": ["es", "en"],
-            "android": ["es", "en"]
+            "ios": [
+              "es",
+              "en"
+            ],
+            "android": [
+              "es",
+              "en"
+            ]
           }
         }
       ],
@@ -51,17 +58,25 @@
               "name": "PomeloStatusWidget",
               "displayName": "Pomelo Moment",
               "description": "Open today's Pomelo Moment.",
-              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ],
               "contentMarginsDisabled": false,
               "ios": {
-                "supportedFamilies": ["systemSmall", "systemMedium"]
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium"
+                ]
               },
               "android": null
             }
           ]
         }
       ],
-      "./plugins/with-pomelo-android-widget"
+      "./plugins/with-pomelo-android-widget",
+      "expo-apple-authentication",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

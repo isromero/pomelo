@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { AppearanceProvider, useAppearance } from '@/appearance/appearance-provider';
+import { AccountProvider } from '@/features/account/presentation/account-provider';
 import { LocaleProvider } from '@/localization/locale-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -44,7 +45,9 @@ export default function RootLayout() {
   return (
     <LocaleProvider>
       <AppearanceProvider>
-        <RootNavigator />
+        <AccountProvider>
+          <RootNavigator />
+        </AccountProvider>
       </AppearanceProvider>
     </LocaleProvider>
   );

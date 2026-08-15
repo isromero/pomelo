@@ -15,3 +15,7 @@ The canonical states are `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 ### Domain docs
 
 Pomelo is a single-context repository with `CONTEXT.md` at the root and decisions in `docs/adr/`. See `docs/agents/domain.md`.
+
+### Architecture
+
+Read `ARCHITECTURE.md` before changing application structure. Organize product code by feature, follow its dependency rules, and avoid creating ceremonial layers.
