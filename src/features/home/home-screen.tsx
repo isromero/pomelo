@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -120,18 +120,34 @@ export function HomeScreen({
     momentRuntime.error === 'pairNotActive';
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [dismissedMemoryId, setDismissedMemoryId] = useState<string | null>(null);
-  const revealedMemoryId = momentRuntime.moment?.memoryId ?? null;
-  const firstRevealReady =
-    premium.access !== 'premium' &&
-    momentRuntime.moment?.status === 'revealed' &&
-    revealedMemoryId !== null;
+  const promptedMemoryIdRef = useRef<string | null>(null);
+  const currentMemoryId = momentRuntime.moment?.memoryId ?? momentRuntime.history[0]?.id ?? null;
+
+  useEffect(() => {
+    if (premium.access === 'premium') {
+      promptedMemoryIdRef.current = null;
+      return undefined;
+    }
+    if (
+      momentRuntime.status !== 'ready' ||
+      premium.status === 'idle' ||
+      premium.status === 'loading' ||
+      !currentMemoryId ||
+      promptedMemoryIdRef.current === currentMemoryId
+    ) {
+      return undefined;
+    }
+
+    promptedMemoryIdRef.current = currentMemoryId;
+    const timer = setTimeout(() => setPaywallVisible(true), 450);
+    return () => clearTimeout(timer);
+  }, [currentMemoryId, momentRuntime.status, premium.access, premium.status]);
 
   const archiveMode =
     premium.access !== 'premium' &&
     (archiveFromServer ||
-      (dismissedMemoryId !== null && dismissedMemoryId === revealedMemoryId));
-  const automaticPaywallVisible =
-    firstRevealReady && revealedMemoryId !== dismissedMemoryId;
+      premium.access === 'archive' ||
+      (dismissedMemoryId !== null && dismissedMemoryId === currentMemoryId));
   const currentMomentState = archiveMode ? 'complete' : momentState(momentRuntime.moment);
   const copy = waitingForPartner ? waitingHeroCopy : heroCopy[currentMomentState];
   const memoryCount = momentRuntime.history.length;
@@ -234,13 +250,11 @@ export function HomeScreen({
       <PremiumPaywall
         onClose={() => {
           setPaywallVisible(false);
-          if (revealedMemoryId) {
-            setDismissedMemoryId(revealedMemoryId);
+          if (currentMemoryId) {
+            setDismissedMemoryId(currentMemoryId);
           }
         }}
-        visible={
-          premium.access !== 'premium' && (paywallVisible || automaticPaywallVisible)
-        }
+        visible={premium.access !== 'premium' && paywallVisible}
       />
     </SafeAreaView>
   );
