@@ -399,6 +399,11 @@ function WaitingPair({ error, state }: { error: PairErrorCode | null; state: Pai
           onPress={() => void controller.createInvitation()}
         />
       )}
+      <SecondaryButton
+        icon="sparkles-outline"
+        label={t('pair.waiting.explore')}
+        onPress={() => router.push('/explore')}
+      />
       <TextButton
         disabled={busy}
         label={t('pair.waiting.unlink')}
