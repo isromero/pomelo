@@ -47,6 +47,7 @@ export function createAccountRuntime() {
     const native = createSupabaseRuntime(loadEnvironment());
     return {
       activate: native.activate,
+      client: native.client,
       controller: new AccountController({
         auth: new SupabaseAuthGateway(native.client),
         cache,
@@ -61,6 +62,7 @@ export function createAccountRuntime() {
     });
     return {
       activate: () => () => {},
+      client: null,
       controller: new AccountController({
         auth: unavailableAuth,
         cache,

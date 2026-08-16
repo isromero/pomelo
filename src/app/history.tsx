@@ -1,11 +1,11 @@
 import { Redirect } from 'expo-router';
 
+import { EmptyAppSectionScreen } from '@/components/pomelo/empty-app-section-screen';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { HomeScreen } from '@/features/home/home-screen';
 import { canBrowsePairApp } from '@/features/pair/application/pair-controller';
 import { usePair } from '@/features/pair/presentation/pair-provider';
 
-export default function HomeRoute() {
+export default function HistoryRoute() {
   const { status } = useAccount();
   const pair = usePair();
 
@@ -18,5 +18,19 @@ export default function HomeRoute() {
   if (!canBrowsePairApp(pair.state)) {
     return <Redirect href="/pair" />;
   }
-  return <HomeScreen pairStatus={pair.state.status} />;
+  const waitingForPartner = pair.state.status === 'waiting';
+  return (
+    <EmptyAppSectionScreen
+      activeTab="history"
+      body={
+        waitingForPartner
+          ? 'section.history.waitingBody'
+          : 'section.history.activeBody'
+      }
+      eyebrow="section.history.eyebrow"
+      icon="journal-outline"
+      title="section.history.title"
+      waitingForPartner={waitingForPartner}
+    />
+  );
 }

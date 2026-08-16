@@ -9,6 +9,118 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      pair_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          cancelled_at: string | null
+          code: string
+          created_at: string
+          creator_id: string
+          expires_at: string
+          id: string
+          pair_id: string
+          status: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          cancelled_at?: string | null
+          code: string
+          created_at?: string
+          creator_id: string
+          expires_at: string
+          id?: string
+          pair_id: string
+          status?: string
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          cancelled_at?: string | null
+          code?: string
+          created_at?: string
+          creator_id?: string
+          expires_at?: string
+          id?: string
+          pair_id?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pair_invitations_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pair_memberships: {
+        Row: {
+          ended_at: string | null
+          joined_at: string
+          pair_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          joined_at?: string
+          pair_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          joined_at?: string
+          pair_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pair_memberships_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pairs: {
+        Row: {
+          activated_at: string | null
+          anniversary: string
+          created_at: string
+          created_by: string
+          dissolved_at: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          activated_at?: string | null
+          anniversary: string
+          created_at?: string
+          created_by: string
+          dissolved_at?: string | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          activated_at?: string | null
+          anniversary?: string
+          created_at?: string
+          created_by?: string
+          dissolved_at?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           appearance: string
@@ -74,7 +186,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_pair_invitation: {
+        Args: { invitation_credential: string }
+        Returns: Json
+      }
+      cancel_pair_invitation: { Args: { invitation_id: string }; Returns: Json }
+      create_pair_invitation: { Args: never; Returns: Json }
+      create_pair_invitation_record: {
+        Args: { target_creator_id: string; target_pair_id: string }
+        Returns: string
+      }
+      create_pair_with_invitation: {
+        Args: { pair_anniversary: string }
+        Returns: Json
+      }
+      dissolve_pair: { Args: never; Returns: Json }
+      get_pair_state: { Args: never; Returns: Json }
+      pair_state_for_user: { Args: { target_user_id: string }; Returns: Json }
+      preview_pair_invitation: {
+        Args: { invitation_credential: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
