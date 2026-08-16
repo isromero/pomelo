@@ -72,7 +72,7 @@ The number of consecutive Moments completed by both members within their complet
 
 ### Progress
 
-The Pair's cumulative reward state derived primarily from revealed Memories. Progress unlocks Pom expressions, states, and a small set of accessories.
+The Pair's cumulative reward state derived from revealed Memories. The first Memory introduces Pom; accessories unlock at 2, 7, 14, and 30 Memories. Progress never decreases and does not depend on Streak.
 
 ### Important Date
 

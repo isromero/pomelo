@@ -279,6 +279,9 @@ El primer Moment completo es gratuito y no requiere tarjeta. Tras su Reveal se p
 - Media se almacenará de forma privada, se servirá con acceso temporal autorizado y no tendrá URLs públicas permanentes.
 - Si un User elimina su Contribution, las referencias compartidas mantendrán una estructura estable con un estado de contenido eliminado.
 - Pom usará la referencia `Pom / Original`, una sola etapa física, unas seis expresiones, tres reacciones reutilizables y unos cuatro accesorios desbloqueables.
+- Las seis expresiones funcionales serán tranquilo, feliz, emocionado, sorprendido, cariñoso y orgulloso. Las tres reacciones animadas reutilizables serán idle, Reveal y desbloqueo de accesorio.
+- La primera Memory presenta a Pom; las Memories 2, 7, 14 y 30 desbloquean respectivamente los cuatro accesorios. Solo una Memory revelada cuenta y Progress nunca disminuye.
+- El vestuario permitirá equipar un único accesorio o seleccionar `Sin accesorio`. Cualquiera de los dos miembros puede cambiar el Pom compartido y los accesorios obtenidos no se pierden al romper Streak o expirar Premium.
 - Pom no tendrá hambre, enfermedad, tristeza por inactividad, monedas, tienda, habitación, minijuegos, múltiples mascotas ni evolución física completa.
 - Streak será Pair-scoped y avanzará solo con Moments completados por ambos. Existirá recuperación limitada sin borrar el récord histórico.
 - El horario del Moment será Pair-scoped y la entrega respetará las zonas horarias de ambos miembros con reglas explícitas para cambios de zona.
