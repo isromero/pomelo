@@ -112,32 +112,21 @@ export function PremiumPaywall({
     annualOffer?.currencyCode ?? null,
     locale,
   );
-  const annualPerPairMonth = formatCurrency(
-    monthlyAmount(annualOffer),
-    annualOffer?.currencyCode ?? null,
-    locale,
-  );
   const monthlyPerPersonMonth = formatCurrency(
     monthlyAmountPerPerson(monthlyOffer),
     monthlyOffer?.currencyCode ?? null,
     locale,
   );
-  const monthlyPerPairMonth = formatCurrency(
-    monthlyAmount(monthlyOffer),
-    monthlyOffer?.currencyCode ?? null,
-    locale,
-  );
   const annualSavings = savingsPercent(annualOffer, monthlyOffer);
-  const annualTotal = replaceValue(
-    t('premium.plan.annual.total'),
-    'price',
-    annualPrice,
-  );
-  const monthlyTotal = replaceValue(
-    t('premium.plan.monthly.total'),
-    'price',
-    monthlyPrice,
-  );
+  const annualPerPerson = annualPerPersonMonth
+    ? replaceValue(t('premium.perPersonMonth'), 'price', annualPerPersonMonth)
+    : annualPrice;
+  const monthlyPerPerson = monthlyPerPersonMonth
+    ? replaceValue(t('premium.perPersonMonth'), 'price', monthlyPerPersonMonth)
+    : monthlyPrice;
+  const selectedBilling = selectedPlan === 'annual'
+    ? replaceValue(t('premium.billing.annual'), 'price', annualPrice)
+    : replaceValue(t('premium.billing.monthly'), 'price', monthlyPrice);
   const canPurchase = offers.length === 2 && access !== 'premium';
   const entitlementDate = entitlement?.expiresAt
     ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(
@@ -177,8 +166,9 @@ export function PremiumPaywall({
         </View>
 
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 28 }]}
-          showsVerticalScrollIndicator={false}>
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}>
           <View style={styles.hero}>
             <View style={styles.heroEyebrowRow}>
               <Ionicons color={colors.action} name="sparkles" size={17} />
@@ -198,35 +188,28 @@ export function PremiumPaywall({
           </View>
 
           <PlanCard
-            headline={annualTotal}
+            headline={annualPerPerson}
             label={t('premium.annual')}
             recommended
             savings={annualSavings}
             selected={selectedPlan === 'annual'}
-            subline={annualPerPairMonth
-              ? replaceValue(t('premium.perPairMonth'), 'price', annualPerPairMonth)
-              : null}
-            detail={annualPerPersonMonth
-              ? replaceValue(t('premium.perPersonMonth'), 'price', annualPerPersonMonth)
-              : null}
+            subline={null}
+            detail={null}
             onPress={() => setSelectedPlan('annual')}
             styles={styles}
           />
           <PlanCard
-            headline={monthlyTotal}
+            headline={monthlyPerPerson}
             label={t('premium.monthly')}
             savings={null}
             selected={selectedPlan === 'monthly'}
-            subline={monthlyPerPairMonth
-              ? replaceValue(t('premium.perPairMonth'), 'price', monthlyPerPairMonth)
-              : null}
-            detail={monthlyPerPersonMonth
-              ? replaceValue(t('premium.perPersonMonth'), 'price', monthlyPerPersonMonth)
-              : null}
+            subline={null}
+            detail={null}
             onPress={() => setSelectedPlan('monthly')}
             styles={styles}
           />
 
+          <Text style={styles.billing}>{selectedBilling}</Text>
           <Text style={styles.renewal}>{t('premium.renewal')}</Text>
           <Text style={styles.noTrial}>{t('premium.noTrial')}</Text>
 
@@ -241,7 +224,9 @@ export function PremiumPaywall({
             <Text style={styles.renewal}>{t('premium.gracePeriod').replace('{date}', entitlementDate)}</Text>
           )}
           {entitlement?.status === 'expired' && <Text style={styles.renewal}>{t('premium.expired')}</Text>}
+        </ScrollView>
 
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <Pressable
             accessibilityRole="button"
             disabled={busy || !canPurchase}
@@ -270,7 +255,7 @@ export function PremiumPaywall({
               <Text style={styles.legalText}>{t('premium.privacy')}</Text>
             </Pressable>
           </View>
-        </ScrollView>
+        </View>
       </View>
     </Modal>
   );
@@ -367,7 +352,8 @@ const createStyles = (colors: SemanticColors) =>
     },
     restoreButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
     restoreText: { color: colors.inkSecondary, fontFamily: fonts.bodyMedium, fontSize: 13 },
-    scrollContent: { gap: 13, paddingHorizontal: 20, paddingTop: 4 },
+    scroll: { flex: 1 },
+    scrollContent: { gap: 13, paddingBottom: 18, paddingHorizontal: 20, paddingTop: 4 },
     hero: {
       alignItems: 'center',
       backgroundColor: colors.ink,
@@ -469,10 +455,19 @@ const createStyles = (colors: SemanticColors) =>
       width: 28,
     },
     selectionSelected: { backgroundColor: colors.action, borderColor: colors.action },
+    billing: { color: colors.inkSecondary, fontFamily: fonts.bodySemiBold, fontSize: 10, lineHeight: 15 },
     renewal: { color: colors.inkSecondary, fontFamily: fonts.body, fontSize: 10, lineHeight: 15 },
     noTrial: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, lineHeight: 15 },
     error: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 17 },
     syncing: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 17 },
+    footer: {
+      backgroundColor: colors.background,
+      borderTopColor: colors.borderSoft,
+      borderTopWidth: 1,
+      gap: 8,
+      paddingHorizontal: 20,
+      paddingTop: 10,
+    },
     primaryButton: {
       alignItems: 'center',
       backgroundColor: colors.action,

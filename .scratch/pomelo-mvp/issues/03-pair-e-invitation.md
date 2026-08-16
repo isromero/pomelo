@@ -1,6 +1,6 @@
 # Pair e Invitation mediante enlace o código
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Parent
 
@@ -16,17 +16,17 @@ Crear el recorrido completo por el que un User abre una Pair, comparte una Invit
 
 ## Acceptance criteria
 
-- [ ] Un User sin Pair puede crear una y obtiene una Invitation de un solo uso con enlace y código alternativo.
-- [ ] El creador ve `Esperando a tu pareja` y puede reenviar o cancelar la Invitation pendiente.
-- [ ] El enlace abre el destino correcto en una instalación nueva, una sesión existente y después de completar autenticación.
-- [ ] El segundo User puede introducir el código manualmente y ve claramente la Pair que está aceptando.
-- [ ] El segundo miembro completa sus datos personales, pero no vuelve a introducir el aniversario ya definido para la Pair.
-- [ ] Aceptar una Invitation actualiza a ambos dispositivos y deja la Pair activa con exactamente dos miembros.
-- [ ] Una Invitation cancelada, caducada, reutilizada o perteneciente a una Pair llena falla con un estado recuperable y sin membresías parciales.
-- [ ] Un User no puede pertenecer a más de una Pair activa y un tercer User no puede unirse a una Pair completa.
-- [ ] El aniversario se almacena una vez en la Pair y ambos miembros ven el mismo valor.
-- [ ] El contrato inicial de desvinculación detiene nuevos Moments y conserva el acceso permitido en Archive Mode; la propagación completa a todas las superficies se finalizará en el issue 19.
-- [ ] Dos clientes reales o equivalentes automatizados demuestran creación, invitación, aceptación, actualización en tiempo real y rechazo de acceso por terceros.
+- [x] Un User sin Pair puede crear una y obtiene una Invitation de un solo uso con enlace y código alternativo.
+- [x] El creador ve `Esperando a tu pareja` y puede reenviar o cancelar la Invitation pendiente.
+- [x] El enlace abre el destino correcto en una instalación nueva, una sesión existente y después de completar autenticación.
+- [x] El segundo User puede introducir el código manualmente y ve claramente la Pair que está aceptando.
+- [x] El segundo miembro completa sus datos personales, pero no vuelve a introducir el aniversario ya definido para la Pair.
+- [x] Aceptar una Invitation actualiza a ambos dispositivos y deja la Pair activa con exactamente dos miembros.
+- [x] Una Invitation cancelada, caducada, reutilizada o perteneciente a una Pair llena falla con un estado recuperable y sin membresías parciales.
+- [x] Un User no puede pertenecer a más de una Pair activa y un tercer User no puede unirse a una Pair completa.
+- [x] El aniversario se almacena una vez en la Pair y ambos miembros ven el mismo valor.
+- [x] El contrato inicial de desvinculación detiene nuevos Moments y conserva el acceso permitido en Archive Mode; la propagación completa a todas las superficies se finalizará en el issue 19.
+- [x] Dos clientes reales o equivalentes automatizados demuestran creación, invitación, aceptación, actualización en tiempo real y rechazo de acceso por terceros.
 - [x] Una Pair en espera puede navegar Home, History, Map y Pair; las acciones que requieren al segundo miembro se muestran bloqueadas o vacías sin simular datos reales.
 
 ## Blocked by
@@ -34,3 +34,5 @@ Crear el recorrido completo por el que un User abre una Pair, comparte una Invit
 - [02 - Cuenta, Profile y recuperación de sesión](02-cuenta-profile-y-sesion.md)
 
 ## Comments
+
+- Flujo validado en `pair_invitation.test.sql`, repositorio/controller y pantallas de Pair/Invitation, incluyendo lifecycle de Invitation, RLS, realtime y desvinculación inicial.

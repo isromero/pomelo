@@ -18,7 +18,7 @@ Endurecer el Question Moment ya funcional para que el ritual sobreviva a días o
 
 - [ ] Cada Moment tiene una ventana normal de 24 horas y una recuperación adicional de 24 horas calculadas con reglas Pair-scoped explícitas.
 - [ ] Home muestra tiempo restante y distingue claramente ventana normal, recuperación y expiración.
-- [ ] Una Contribution pendiente puede reintentarse después de perder conexión sin duplicarse ni cambiar la enviada previamente.
+- [x] Una Contribution pendiente puede reintentarse después de perder conexión sin duplicarse ni cambiar la enviada previamente.
 - [ ] El trabajo todavía no enviado se conserva de forma segura en el dispositivo y comunica cuándo falta sincronizar.
 - [ ] Un Moment con una sola Contribution nunca revela esa aportación ni crea una Memory conjunta al expirar.
 - [ ] Un Moment expirado deja un estado estable y no bloquea la generación válida del siguiente día.
@@ -32,4 +32,3 @@ Endurecer el Question Moment ya funcional para que el ritual sobreviva a días o
 - [04 - Question: primer Moment completo hasta Memory](04-question-hasta-memory.md)
 
 ## Comments
-

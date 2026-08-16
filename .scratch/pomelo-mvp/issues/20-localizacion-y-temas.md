@@ -16,10 +16,10 @@ Completar la internacionalización y apariencia del MVP como comportamientos de 
 
 ## Acceptance criteria
 
-- [ ] El primer arranque elige español o inglés desde el dispositivo y el User puede cambiar Locale manualmente sin cambiar el de su pareja.
+- [x] El primer arranque elige español o inglés desde el dispositivo y el User puede cambiar Locale manualmente sin cambiar el de su pareja.
 - [ ] Locale y Appearance se aplican antes de autenticación, se guardan en Profile al iniciar sesión y se restauran sin flashes del idioma o tema equivocado.
 - [ ] No quedan strings User-facing hard-coded ni claves visibles en UI, onboarding, errores, estados vacíos, permisos o accesibilidad.
-- [ ] Una Pair con Locales distintos recibe el mismo identificador semántico de Prompt y cada miembro ve una traducción ES/EN equivalente.
+- [x] Una Pair con Locales distintos recibe el mismo identificador semántico de Prompt y cada miembro ve una traducción ES/EN equivalente.
 - [ ] La biblioteca impide activar un Prompt sin ambas variantes completas y conserva formato, respuesta esperada e intimidad comunes.
 - [ ] Fechas, horas, plurales, números, distancia, precios y renovación usan reglas del Locale del User sin cambiar importes o estado compartido.
 - [ ] Notificaciones, deep links, widgets, paywall, restore, términos, privacidad, soporte y metadata de tiendas están completos en ES/EN.
@@ -45,4 +45,3 @@ Completar la internacionalización y apariencia del MVP como comportamientos de 
 - [19 - Ajustes, privacidad y flujos destructivos completos](19-ajustes-privacidad-y-eliminacion.md)
 
 ## Comments
-
