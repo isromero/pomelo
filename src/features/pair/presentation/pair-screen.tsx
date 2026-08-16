@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppearance } from '@/appearance/appearance-provider';
 import { Avatar } from '@/components/pomelo/avatar';
+import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, type SemanticColors } from '@/constants/pomelo-theme';
 import type {
   PairErrorCode,
@@ -147,6 +148,9 @@ export function PairScreen({ onSignOut }: { onSignOut(): void }) {
             />
           )}
         </ScrollView>
+        {(state?.status === 'waiting' || state?.status === 'active') && (
+          <BottomNavigation activeTab="couple" />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -399,11 +403,6 @@ function WaitingPair({ error, state }: { error: PairErrorCode | null; state: Pai
           onPress={() => void controller.createInvitation()}
         />
       )}
-      <SecondaryButton
-        icon="sparkles-outline"
-        label={t('pair.waiting.explore')}
-        onPress={() => router.push('/explore')}
-      />
       <TextButton
         disabled={busy}
         label={t('pair.waiting.unlink')}

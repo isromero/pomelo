@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppearance } from '@/appearance/appearance-provider';
@@ -7,12 +8,18 @@ import { fonts, SemanticColors } from '@/constants/pomelo-theme';
 import { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 
-type TabKey = 'home' | 'history' | 'map' | 'couple';
+export type TabKey = 'home' | 'history' | 'map' | 'couple';
 
 type BottomNavigationProps = {
   activeTab?: TabKey;
-  onSelect?: (tab: TabKey) => void;
 };
+
+const tabRoutes = {
+  couple: '/pair',
+  history: '/history',
+  home: '/home',
+  map: '/map',
+} as const;
 
 const tabs: {
   key: TabKey;
@@ -26,13 +33,13 @@ const tabs: {
   { key: 'couple', label: 'nav.pair', icon: 'heart-outline', activeIcon: 'heart' },
 ];
 
-export function BottomNavigation({ activeTab = 'home', onSelect }: BottomNavigationProps) {
+export function BottomNavigation({ activeTab = 'home' }: BottomNavigationProps) {
   const { colors } = useAppearance();
   const { t } = useLocale();
   const styles = createStyles(colors);
   const handlePress = (tab: TabKey) => {
     void Haptics.selectionAsync();
-    onSelect?.(tab);
+    router.navigate(tabRoutes[tab]);
   };
 
   return (

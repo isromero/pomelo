@@ -1,4 +1,5 @@
 import {
+  canBrowsePairApp,
   PairController,
   PairError,
   type PairRepository,
@@ -43,6 +44,18 @@ const activeState: PairState = {
   ],
   status: 'active',
 };
+
+describe('Pair app access', () => {
+  it('lets active and waiting Pairs browse the app shell', () => {
+    expect(canBrowsePairApp(waitingState)).toBe(true);
+    expect(canBrowsePairApp(activeState)).toBe(true);
+  });
+
+  it('keeps setup and Archive Mode in their dedicated flows', () => {
+    expect(canBrowsePairApp(null)).toBe(false);
+    expect(canBrowsePairApp({ ...activeState, status: 'archived' })).toBe(false);
+  });
+});
 
 class FakePairRepository implements PairRepository {
   private listener: (() => void) | null = null;

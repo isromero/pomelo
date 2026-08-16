@@ -27,7 +27,7 @@ Crear el recorrido completo por el que un User abre una Pair, comparte una Invit
 - [ ] El aniversario se almacena una vez en la Pair y ambos miembros ven el mismo valor.
 - [ ] El contrato inicial de desvinculación detiene nuevos Moments y conserva el acceso permitido en Archive Mode; la propagación completa a todas las superficies se finalizará en el issue 19.
 - [ ] Dos clientes reales o equivalentes automatizados demuestran creación, invitación, aceptación, actualización en tiempo real y rechazo de acceso por terceros.
-- [x] Mientras espera, el creador puede recorrer una demo claramente identificada de Moment, privacidad, Reveal y Memory sin crear datos reales, y volver a la Invitation.
+- [x] Una Pair en espera puede navegar Home, History, Map y Pair; las acciones que requieren al segundo miembro se muestran bloqueadas o vacías sin simular datos reales.
 
 ## Blocked by
 
