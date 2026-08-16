@@ -1,6 +1,6 @@
 begin;
 
-select plan(31);
+select plan(33);
 
 select has_table('public', 'moments', 'Moment storage exists');
 select has_table('public', 'contributions', 'Contribution storage exists');
@@ -33,6 +33,10 @@ set avatar_key = case id
   locale = case id
     when '50000000-0000-4000-8000-000000000001' then 'es'
     else 'en'
+  end,
+  time_zone = case id
+    when '50000000-0000-4000-8000-000000000001' then 'Pacific/Kiritimati'
+    else 'UTC'
   end;
 
 create temporary table moment_test_results (
@@ -61,6 +65,15 @@ select is(
   'active',
   'accepting the Invitation activates the Pair for the Moment slice'
 );
+select is(
+  (
+    select time_zone
+    from public.pairs
+    where id = ((select payload ->> 'id' from moment_test_results where label = 'accepted'))::uuid
+  ),
+  'Pacific/Kiritimati',
+  'the Pair stores the creator time zone for its local day'
+);
 
 select set_config('request.jwt.claim.sub', '50000000-0000-4000-8000-000000000001', true);
 insert into moment_test_results values ('first', public.get_daily_moment());
@@ -75,6 +88,11 @@ select is(
   (select payload ->> 'isFree' from moment_test_results where label = 'first'),
   'true',
   'the first Moment is marked free'
+);
+select is(
+  (select payload ->> 'localDate' from moment_test_results where label = 'first'),
+  ((now() at time zone 'Pacific/Kiritimati')::date)::text,
+  'the daily Moment uses the Pair local date'
 );
 select is(
   (select payload #>> '{prompt,conceptKey}' from moment_test_results where label = 'first'),

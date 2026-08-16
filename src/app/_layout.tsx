@@ -23,7 +23,7 @@ import {
 } from '@/features/account/presentation/account-provider';
 import { MomentProvider } from '@/features/moment/presentation/moment-provider';
 import { PairProvider, usePair } from '@/features/pair/presentation/pair-provider';
-import { LocaleProvider } from '@/localization/locale-provider';
+import { LocaleProvider, useLocale } from '@/localization/locale-provider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,15 +52,31 @@ export default function RootLayout() {
     <LocaleProvider>
       <AppearanceProvider>
         <AccountProvider>
-          <PairRuntime>
-            <MomentRuntime>
-              <RootNavigator />
-            </MomentRuntime>
-          </PairRuntime>
+          <LocaleRuntime>
+            <PairRuntime>
+              <MomentRuntime>
+                <RootNavigator />
+              </MomentRuntime>
+            </PairRuntime>
+          </LocaleRuntime>
         </AccountProvider>
       </AppearanceProvider>
     </LocaleProvider>
   );
+}
+
+function LocaleRuntime({ children }: PropsWithChildren) {
+  const { profile, status } = useAccount();
+  const { setLocale } = useLocale();
+  const profileLocale = profile?.locale;
+
+  useEffect(() => {
+    if (status === 'ready' && profileLocale) {
+      void setLocale(profileLocale);
+    }
+  }, [profileLocale, setLocale, status]);
+
+  return children;
 }
 
 function PairRuntime({ children }: PropsWithChildren) {

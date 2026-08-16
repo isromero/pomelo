@@ -256,6 +256,7 @@ export type Database = {
           dissolved_at: string | null
           id: string
           status: string
+          time_zone: string
         }
         Insert: {
           activated_at?: string | null
@@ -265,6 +266,7 @@ export type Database = {
           dissolved_at?: string | null
           id?: string
           status?: string
+          time_zone?: string
         }
         Update: {
           activated_at?: string | null
@@ -274,6 +276,7 @@ export type Database = {
           dissolved_at?: string | null
           id?: string
           status?: string
+          time_zone?: string
         }
         Relationships: []
       }
@@ -286,6 +289,7 @@ export type Database = {
           display_name: string
           id: string
           locale: string
+          time_zone: string
           updated_at: string
         }
         Insert: {
@@ -296,6 +300,7 @@ export type Database = {
           display_name: string
           id: string
           locale?: string
+          time_zone?: string
           updated_at?: string
         }
         Update: {
@@ -306,6 +311,7 @@ export type Database = {
           display_name?: string
           id?: string
           locale?: string
+          time_zone?: string
           updated_at?: string
         }
         Relationships: []
@@ -527,4 +533,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

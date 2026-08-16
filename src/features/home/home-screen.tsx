@@ -133,6 +133,7 @@ export function HomeScreen({
         <ScrollView
           bounces={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <AppHeader
             avatarKey={profile?.avatarKey ?? 'calm'}
