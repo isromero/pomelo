@@ -84,9 +84,8 @@
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/database.types.ts",
-    "test:env": "jest src/lib/env.test.ts --runInBand",
-    "smoke:backend": "node scripts/smoke-backend.mjs",
-    "smoke:local": "npm run test:env && npm run db:reset && npm run db:test && npm run db:types && npm run smoke:backend"
+    "smoke": "node scripts/smoke.mjs",
+    "verify:local": "npm run db:reset && npm run db:test && npm run db:types && npm run test && npm run typecheck && npm run lint && npm run smoke"
   },
   "private": true
 }

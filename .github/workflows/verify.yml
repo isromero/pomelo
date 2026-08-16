@@ -33,4 +33,4 @@ jobs:
       - run: npm run db:test
       - run: npm run db:types
       - run: git diff --exit-code -- src/lib/database.types.ts
-      - run: npm run smoke:backend
+      - run: npm run smoke

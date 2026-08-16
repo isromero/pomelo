@@ -1,6 +1,5 @@
 import { Image, StyleSheet, View } from 'react-native';
 
-import type { AvatarKey } from '@/features/account/domain/profile';
 import { palette } from '@/constants/pomelo-theme';
 
 const avatarSources = {
@@ -8,6 +7,8 @@ const avatarSources = {
   calm: require('@/assets/images/pom/pom-calm.png'),
   surprised: require('@/assets/images/pom/pom-surprised.png'),
 } as const;
+
+type AvatarKey = keyof typeof avatarSources;
 
 export function Avatar({ avatarKey, size = 120 }: { avatarKey: AvatarKey; size?: number }) {
   return (
