@@ -28,6 +28,7 @@ import {
   validateImportantDate,
   type ImportantDateInput,
   type ImportantDateKind,
+  type ImportantDateValidationError,
 } from '@/features/pair/domain/important-date';
 import {
   invitationExpiryDelay,
@@ -55,6 +56,14 @@ const errorKeys: Record<PairErrorCode, TranslationKey> = {
   pairFull: 'pair.error.pairFull',
   profileIncomplete: 'pair.error.profileIncomplete',
   unexpected: 'pair.error.unexpected',
+};
+
+const importantDateValidationKeys: Record<ImportantDateValidationError, TranslationKey> = {
+  date: 'pair.error.invalidImportantDate.date',
+  future: 'pair.error.invalidImportantDate.future',
+  kind: 'pair.error.invalidImportantDate.kind',
+  name: 'pair.error.invalidImportantDate.name',
+  recurrence: 'pair.error.invalidImportantDate.recurrence',
 };
 
 function formatDate(value: string, locale: 'en' | 'es') {
@@ -495,6 +504,8 @@ function ImportantDatesPanel({ state }: { state: PairState }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [formError, setFormError] = useState<PairErrorCode | null>(null);
+  const [validationError, setValidationError] =
+    useState<ImportantDateValidationError | null>(null);
   const [yearly, setYearly] = useState(false);
 
   const editingStillExists =
@@ -513,6 +524,7 @@ function ImportantDatesPanel({ state }: { state: PairState }) {
     setName('');
     setDate('');
     setFormError(null);
+    setValidationError(null);
     setYearly(false);
   };
 
@@ -523,11 +535,14 @@ function ImportantDatesPanel({ state }: { state: PairState }) {
       name,
       recurrence: yearly ? 'yearly' : 'once',
     };
-    if (validateImportantDate(input, today)) {
-      setFormError('invalidImportantDate');
+    const nextValidationError = validateImportantDate(input, today);
+    if (nextValidationError) {
+      setFormError(null);
+      setValidationError(nextValidationError);
       return;
     }
     setFormError(null);
+    setValidationError(null);
     if (editingId) {
       void controller.updateImportantDate(editingId, input);
     } else {
@@ -538,6 +553,7 @@ function ImportantDatesPanel({ state }: { state: PairState }) {
 
   const edit = (importantDate: ImportantDateInput & { id: string }) => {
     setFormError(null);
+    setValidationError(null);
     setEditingId(importantDate.id);
     setFormVisible(true);
     setKind(importantDate.kind);
@@ -649,6 +665,7 @@ function ImportantDatesPanel({ state }: { state: PairState }) {
             onPress={() => {
               setEditingId(null);
               setFormError(null);
+              setValidationError(null);
               setFormVisible(true);
             }}
           />
@@ -712,7 +729,10 @@ function ImportantDatesPanel({ state }: { state: PairState }) {
           </View>
         )}
       </View>
-      <ErrorBanner error={formError ?? error} />
+      <ErrorBanner
+        error={validationError ? null : formError ?? error}
+        message={validationError ? t(importantDateValidationKeys[validationError]) : undefined}
+      />
     </View>
   );
 }
@@ -765,7 +785,13 @@ function TitleBlock({ body, eyebrow, title }: { body: string; eyebrow: string; t
   );
 }
 
-function ErrorBanner({ error }: { error: PairErrorCode | null }) {
+function ErrorBanner({
+  error,
+  message,
+}: {
+  error: PairErrorCode | null;
+  message?: string;
+}) {
   const { colors } = useAppearance();
   const { t } = useLocale();
   const styles = createStyles(colors);
@@ -775,7 +801,7 @@ function ErrorBanner({ error }: { error: PairErrorCode | null }) {
   return (
     <View style={styles.errorBanner}>
       <Ionicons color={colors.actionDeep} name="alert-circle" size={19} />
-      <Text style={styles.errorText}>{t(errorKeys[error])}</Text>
+      <Text style={styles.errorText}>{message ?? t(errorKeys[error])}</Text>
     </View>
   );
 }
