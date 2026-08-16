@@ -1,6 +1,7 @@
 import {
   MomentController,
   MomentError,
+  type MomentDraftStore,
   type MomentRepository,
 } from '@/features/moment/application/moment-controller';
 import type {
@@ -23,10 +24,24 @@ const partner = {
   userId: 'user-2',
 };
 
+const streak = {
+  best: 0,
+  current: 0,
+  lastCompletedLocalDate: null,
+  recoveryAvailable: true,
+  recoveryLimit: 1,
+  recoveryUsed: 0,
+};
+
 const openMoment: DailyMoment = {
   format: 'question',
   id: 'moment-1',
   isFree: true,
+  lifecycle: {
+    normalExpiresAt: '2026-08-17T00:00:00.000Z',
+    recoveryExpiresAt: '2026-08-18T00:00:00.000Z',
+    window: 'normal',
+  },
   localDate: '2026-08-16',
   memoryId: null,
   ownContribution: null,
@@ -34,11 +49,13 @@ const openMoment: DailyMoment = {
   partner,
   pomState: null,
   prompt,
+  streak,
   status: 'open',
 };
 
 const savedMoment: DailyMoment = {
   ...openMoment,
+  lifecycle: { ...openMoment.lifecycle, window: 'complete' },
   ownContribution: {
     id: 'contribution-1',
     responseChoice: null,
@@ -47,6 +64,7 @@ const savedMoment: DailyMoment = {
     userId: 'user-1',
   },
   partner: { ...partner, submitted: true },
+  streak: { ...streak, best: 1, current: 1, lastCompletedLocalDate: '2026-08-16' },
   status: 'ready',
 };
 
@@ -80,6 +98,7 @@ class FakeMomentRepository implements MomentRepository {
   revealCalls = 0;
   revealError: MomentError | null = null;
   dailyError: MomentError | null = null;
+  submitError: MomentError | null = null;
 
   subscribe(listener: () => void) {
     this.listener = listener;
@@ -101,6 +120,9 @@ class FakeMomentRepository implements MomentRepository {
 
   async submitQuestion() {
     this.submitCalls += 1;
+    if (this.submitError) {
+      throw this.submitError;
+    }
     this.moment = savedMoment;
     return this.moment;
   }
@@ -119,6 +141,26 @@ class FakeMomentRepository implements MomentRepository {
     };
     this.history = [memory];
     return this.moment;
+  }
+}
+
+class FakeDraftStore implements MomentDraftStore {
+  draft: { text?: string; choice?: string } | null = null;
+  saveError: Error | null = null;
+
+  async get() {
+    return this.draft;
+  }
+
+  async remove() {
+    this.draft = null;
+  }
+
+  async save(_momentId: string, response: { text?: string; choice?: string }) {
+    if (this.saveError) {
+      throw this.saveError;
+    }
+    this.draft = response;
   }
 }
 
@@ -221,6 +263,65 @@ describe('MomentController', () => {
       history: [memory],
       moment: null,
       status: 'ready',
+    });
+  });
+
+  it('restores a private draft and marks it as needing synchronization', async () => {
+    const repository = new FakeMomentRepository();
+    const draftStore = new FakeDraftStore();
+    draftStore.draft = { text: 'Saved before the train tunnel.' };
+    const controller = new MomentController(repository, draftStore);
+
+    await controller.start();
+
+    expect(controller.getSnapshot()).toMatchObject({
+      draft: { text: 'Saved before the train tunnel.' },
+      syncPending: true,
+    });
+  });
+
+  it('keeps a failed submission retryable without changing the saved response', async () => {
+    const repository = new FakeMomentRepository();
+    repository.submitError = new MomentError('network');
+    const draftStore = new FakeDraftStore();
+    const controller = new MomentController(repository, draftStore);
+    await controller.start();
+
+    await controller.submitQuestion({ text: 'A response that must not be lost.' });
+
+    expect(repository.submitCalls).toBe(1);
+    expect(controller.getSnapshot()).toMatchObject({
+      draft: { text: 'A response that must not be lost.' },
+      error: 'network',
+      syncPending: true,
+    });
+
+    repository.submitError = null;
+    await controller.submitQuestion({ text: 'A response that must not be lost.' });
+
+    expect(repository.submitCalls).toBe(2);
+    expect(controller.getSnapshot()).toMatchObject({
+      draft: null,
+      error: null,
+      moment: savedMoment,
+      syncPending: false,
+    });
+  });
+
+  it('does not send a response when its private draft cannot be persisted', async () => {
+    const repository = new FakeMomentRepository();
+    const draftStore = new FakeDraftStore();
+    draftStore.saveError = new Error('storage unavailable');
+    const controller = new MomentController(repository, draftStore);
+    await controller.start();
+
+    await controller.submitQuestion({ text: 'Keep this answer private.' });
+
+    expect(repository.submitCalls).toBe(0);
+    expect(controller.getSnapshot()).toMatchObject({
+      draft: { text: 'Keep this answer private.' },
+      error: 'draftStorage',
+      syncPending: false,
     });
   });
 });

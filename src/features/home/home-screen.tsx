@@ -18,7 +18,11 @@ import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
 import type { MomentErrorCode } from '@/features/moment/application/moment-controller';
-import type { DailyMoment, Memory } from '@/features/moment/domain/moment';
+import {
+  initialStreakState,
+  type DailyMoment,
+  type Memory,
+} from '@/features/moment/domain/moment';
 import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
 import { useMoment } from '@/features/moment/presentation/moment-provider';
 import type { PairStatus } from '@/features/pair/application/pair-controller';
@@ -82,6 +86,11 @@ function dailyMomentFromMemory(memory: Memory): DailyMoment {
     format: 'question',
     id: memory.momentId,
     isFree: true,
+    lifecycle: {
+      normalExpiresAt: memory.revealedAt,
+      recoveryExpiresAt: memory.revealedAt,
+      window: 'complete',
+    },
     localDate: memory.localDate,
     memoryId: memory.id,
     ownContribution: memory.ownContribution,
@@ -89,6 +98,7 @@ function dailyMomentFromMemory(memory: Memory): DailyMoment {
     partner: memory.partner,
     pomState: memory.pomState,
     prompt: memory.prompt,
+    streak: initialStreakState,
     status: 'revealed',
   };
 }
@@ -187,6 +197,7 @@ export function HomeScreen({
           <AppHeader
             avatarKey={profile?.avatarKey ?? 'calm'}
             onAvatarPress={() => void controller.signOut()}
+            streakCount={momentRuntime.moment?.streak.current ?? 0}
             showStreak={!waitingForPartner}
           />
 
@@ -225,11 +236,14 @@ export function HomeScreen({
             ) : (
               <DailyMomentCard
                 busy={momentRuntime.busy}
+                draft={momentRuntime.draft}
                 error={displayError}
                 key={displayMoment.id}
                 moment={displayMoment}
                 onReveal={() => void momentRuntime.controller.revealMoment()}
+                onDraftChange={(draft) => void momentRuntime.controller.saveDraft(draft)}
                 onSubmit={(response) => void momentRuntime.controller.submitQuestion(response)}
+                syncPending={momentRuntime.syncPending}
               />
             )}
           </View>

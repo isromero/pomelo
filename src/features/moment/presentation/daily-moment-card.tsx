@@ -1,28 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAppearance } from '@/appearance/appearance-provider';
 import { fonts, radii, type SemanticColors } from '@/constants/pomelo-theme';
 import type { MomentErrorCode } from '@/features/moment/application/moment-controller';
-import type {
-  Contribution,
-  DailyMoment,
-  QuestionResponse,
+import {
+  formatMomentRemaining,
+  getMomentWindow,
+  momentRemainingMs,
+  type Contribution,
+  type DailyMoment,
+  type MomentWindow,
+  type QuestionResponse,
 } from '@/features/moment/domain/moment';
 import { useLocale } from '@/localization/locale-provider';
 
 type DailyMomentCardProps = {
   busy: boolean;
+  draft: QuestionResponse | null;
   error: MomentErrorCode | null;
   moment: DailyMoment;
+  onDraftChange(response: QuestionResponse): void;
   onReveal(): void;
   onSubmit(response: QuestionResponse): void;
+  syncPending: boolean;
 };
 
 function errorKey(error: MomentErrorCode) {
   switch (error) {
+    case 'draftStorage':
+      return 'moment.error.draftStorage' as const;
     case 'invalidResponse':
       return 'moment.error.invalidResponse' as const;
     case 'momentClosed':
@@ -95,18 +104,32 @@ function ActionButton({
 
 export function DailyMomentCard({
   busy,
+  draft,
   error,
   moment,
+  onDraftChange,
   onReveal,
   onSubmit,
+  syncPending,
 }: DailyMomentCardProps) {
   const { colors } = useAppearance();
   const { t } = useLocale();
   const styles = createStyles(colors);
-  const [draftText, setDraftText] = useState('');
-  const [draftChoice, setDraftChoice] = useState<string | null>(null);
+  const [draftText, setDraftText] = useState(() => draft?.text ?? '');
+  const [draftChoice, setDraftChoice] = useState<string | null>(() => draft?.choice ?? null);
+  const [clock, setClock] = useState(() => Date.now());
   const submitted = moment.ownContribution !== null;
   const revealed = moment.status === 'revealed';
+  const window = getMomentWindow(moment, new Date(clock));
+  const expired = window === 'expired';
+
+  useEffect(() => {
+    if (window === 'complete' || window === 'expired') {
+      return undefined;
+    }
+    const timer = setInterval(() => setClock(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, [window]);
 
   const submit = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -117,7 +140,21 @@ export function DailyMomentCard({
     );
   };
 
-  const chip = revealed
+  const saveTextDraft = (text: string) => {
+    setDraftText(text);
+    onDraftChange({ text });
+  };
+
+  const saveChoiceDraft = (choice: string) => {
+    setDraftChoice(choice);
+    onDraftChange({ choice });
+  };
+
+  const chip = expired
+    ? 'moment.kind.expired'
+    : window === 'recovery'
+      ? 'moment.kind.recovery'
+      : revealed
     ? 'moment.kind.revealed'
     : moment.status === 'ready'
       ? 'moment.kind.ready'
@@ -139,7 +176,23 @@ export function DailyMomentCard({
         <Text style={styles.question}>{moment.prompt.text}</Text>
       </View>
 
+      <LifecycleBanner moment={moment} window={window} now={new Date(clock)} />
+
+      {moment.streak.recoveryAvailable && !revealed && (
+        <View style={styles.systemMessage}>
+          <Ionicons color={colors.action} name="shield-checkmark-outline" size={17} />
+          <Text style={styles.systemText}>{t('moment.streakRecovery')}</Text>
+        </View>
+      )}
+
       {error && <Text style={styles.errorText}>{t(errorKey(error))}</Text>}
+
+      {syncPending && !submitted && (
+        <View style={styles.syncMessage}>
+          <Ionicons color={colors.actionDeep} name="cloud-offline-outline" size={17} />
+          <Text style={styles.syncText}>{t('moment.syncPending')}</Text>
+        </View>
+      )}
 
       {revealed && moment.ownContribution && (
         <>
@@ -162,7 +215,7 @@ export function DailyMomentCard({
         </>
       )}
 
-      {!revealed && !submitted && (
+      {!revealed && !submitted && !expired && (
         <>
           <View style={styles.systemMessage}>
             <Ionicons color={colors.inkSecondary} name="lock-closed-outline" size={17} />
@@ -177,7 +230,7 @@ export function DailyMomentCard({
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
                     key={option}
-                    onPress={() => setDraftChoice(option)}
+                    onPress={() => saveChoiceDraft(option)}
                     style={[styles.option, selected && styles.optionSelected]}>
                     <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
                       {option}
@@ -192,7 +245,7 @@ export function DailyMomentCard({
               editable={!busy}
               maxLength={1000}
               multiline
-              onChangeText={setDraftText}
+              onChangeText={saveTextDraft}
               placeholder={t('moment.answerPlaceholder')}
               placeholderTextColor={colors.muted}
               style={styles.input}
@@ -218,7 +271,9 @@ export function DailyMomentCard({
           <View style={styles.systemMessage}>
             <Ionicons color={colors.inkSecondary} name="lock-closed-outline" size={17} />
             <Text style={styles.systemText}>
-              {moment.partner.submitted
+              {expired
+                ? t('moment.expired')
+                : moment.partner.submitted
                 ? t('moment.partnerReady')
                 : t('moment.saved')}
             </Text>
@@ -236,12 +291,44 @@ export function DailyMomentCard({
         </>
       )}
 
-      {!revealed && !submitted && moment.partner.submitted && (
+      {!revealed && !submitted && !expired && moment.partner.submitted && (
         <View style={styles.systemMessage}>
           <Ionicons color={colors.inkSecondary} name="lock-closed-outline" size={17} />
           <Text style={styles.systemText}>{t('moment.partnerReady')}</Text>
         </View>
       )}
+    </View>
+  );
+}
+
+function LifecycleBanner({
+  moment,
+  now,
+  window,
+}: {
+  moment: DailyMoment;
+  now: Date;
+  window: MomentWindow;
+}) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+  const time = formatMomentRemaining(momentRemainingMs(moment, now));
+  const key = window === 'normal'
+    ? 'moment.window.normal'
+    : window === 'recovery'
+      ? 'moment.window.recovery'
+      : window === 'expired'
+        ? 'moment.window.expired'
+        : 'moment.window.complete';
+  return (
+    <View style={[styles.lifecycle, window === 'recovery' && styles.lifecycleRecovery]}>
+      <Ionicons
+        color={window === 'expired' ? colors.muted : colors.actionDeep}
+        name={window === 'expired' ? 'lock-closed-outline' : 'timer-outline'}
+        size={17}
+      />
+      <Text style={styles.lifecycleText}>{t(key).replace('{time}', time)}</Text>
     </View>
   );
 }
@@ -311,6 +398,37 @@ const createStyles = (colors: SemanticColors) =>
       color: colors.inkSecondary,
       flex: 1,
       fontFamily: fonts.body,
+      fontSize: 11,
+      lineHeight: 17,
+    },
+    syncMessage: {
+      alignItems: 'center',
+      backgroundColor: colors.actionSoft,
+      borderRadius: 14,
+      flexDirection: 'row',
+      gap: 8,
+      padding: 11,
+    },
+    syncText: {
+      color: colors.actionDeep,
+      flex: 1,
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 11,
+      lineHeight: 17,
+    },
+    lifecycle: {
+      alignItems: 'center',
+      backgroundColor: colors.backgroundRaised,
+      borderRadius: 14,
+      flexDirection: 'row',
+      gap: 8,
+      padding: 11,
+    },
+    lifecycleRecovery: { backgroundColor: colors.rewardSoft },
+    lifecycleText: {
+      color: colors.inkSecondary,
+      flex: 1,
+      fontFamily: fonts.bodySemiBold,
       fontSize: 11,
       lineHeight: 17,
     },

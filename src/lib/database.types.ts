@@ -44,6 +44,50 @@ export type Database = {
           },
         ]
       }
+      important_dates: {
+        Row: {
+          created_at: string
+          created_by: string
+          date: string
+          id: string
+          kind: string
+          name: string
+          pair_id: string
+          recurrence: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date: string
+          id?: string
+          kind: string
+          name: string
+          pair_id: string
+          recurrence?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date?: string
+          id?: string
+          kind?: string
+          name?: string
+          pair_id?: string
+          recurrence?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "important_dates_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memories: {
         Row: {
           created_at: string
@@ -118,9 +162,11 @@ export type Database = {
           id: string
           is_free: boolean
           local_date: string
+          normal_expires_at: string
           pair_id: string
           prompt_concept_key: string
           ready_at: string | null
+          recovery_expires_at: string
           revealed_at: string | null
           status: string
         }
@@ -130,9 +176,11 @@ export type Database = {
           id?: string
           is_free?: boolean
           local_date: string
+          normal_expires_at: string
           pair_id: string
           prompt_concept_key: string
           ready_at?: string | null
+          recovery_expires_at: string
           revealed_at?: string | null
           status?: string
         }
@@ -142,9 +190,11 @@ export type Database = {
           id?: string
           is_free?: boolean
           local_date?: string
+          normal_expires_at?: string
           pair_id?: string
           prompt_concept_key?: string
           ready_at?: string | null
+          recovery_expires_at?: string
           revealed_at?: string | null
           status?: string
         }
@@ -242,6 +292,41 @@ export type Database = {
             foreignKeyName: "pair_memberships_pair_id_fkey"
             columns: ["pair_id"]
             isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pair_streaks: {
+        Row: {
+          best_count: number
+          current_count: number
+          last_completed_local_date: string | null
+          pair_id: string
+          recovery_uses: number
+          updated_at: string
+        }
+        Insert: {
+          best_count?: number
+          current_count?: number
+          last_completed_local_date?: string | null
+          pair_id: string
+          recovery_uses?: number
+          updated_at?: string
+        }
+        Update: {
+          best_count?: number
+          current_count?: number
+          last_completed_local_date?: string | null
+          pair_id?: string
+          recovery_uses?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pair_streaks_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: true
             referencedRelation: "pairs"
             referencedColumns: ["id"]
           },
@@ -415,6 +500,42 @@ export type Database = {
         }
         Relationships: []
       }
+      streak_completions: {
+        Row: {
+          completed_at: string
+          local_date: string
+          moment_id: string
+          pair_id: string
+        }
+        Insert: {
+          completed_at?: string
+          local_date: string
+          moment_id: string
+          pair_id: string
+        }
+        Update: {
+          completed_at?: string
+          local_date?: string
+          moment_id?: string
+          pair_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streak_completions_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: true
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "streak_completions_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -431,6 +552,15 @@ export type Database = {
         }
         Returns: Json
       }
+      create_important_date: {
+        Args: {
+          date_kind: string
+          date_name: string
+          date_recurrence?: string
+          date_value: string
+        }
+        Returns: Json
+      }
       create_pair_invitation: { Args: never; Returns: Json }
       create_pair_invitation_record: {
         Args: { target_creator_id: string; target_pair_id: string }
@@ -440,22 +570,54 @@ export type Database = {
         Args: { pair_anniversary: string }
         Returns: Json
       }
+      delete_important_date: { Args: { target_date_id: string }; Returns: Json }
       dissolve_pair: { Args: never; Returns: Json }
       get_daily_moment: { Args: never; Returns: Json }
+      get_important_date_widget: { Args: never; Returns: Json }
       get_memory_history: { Args: never; Returns: Json }
       get_pair_state: { Args: never; Returns: Json }
       get_premium_state: { Args: never; Returns: Json }
+      important_date_for_year: {
+        Args: { target_date: string; target_year: number }
+        Returns: string
+      }
+      important_date_payload: {
+        Args: {
+          target_date: Database["public"]["Tables"]["important_dates"]["Row"]
+        }
+        Returns: Json
+      }
+      important_dates_for_pair: {
+        Args: { target_pair_id: string }
+        Returns: Json
+      }
       list_memories: { Args: never; Returns: Json }
       memory_payload_for_user: {
         Args: { target_memory_id: string; target_user_id: string }
         Returns: Json
       }
+      moment_deadlines_for_pair: {
+        Args: { target_local_date: string; target_pair_id: string }
+        Returns: {
+          normal_expires_at: string
+          recovery_expires_at: string
+        }[]
+      }
       moment_payload_for_user: {
         Args: { target_moment_id: string; target_user_id: string }
         Returns: Json
       }
+      next_important_date_for_pair: {
+        Args: { target_pair_id: string }
+        Returns: Json
+      }
+      next_yearly_important_date: {
+        Args: { target_date: string; today: string }
+        Returns: string
+      }
       pair_has_premium: { Args: { target_pair_id: string }; Returns: boolean }
       pair_state_for_user: { Args: { target_user_id: string }; Returns: Json }
+      pair_streak_payload: { Args: { target_pair_id: string }; Returns: Json }
       premium_subscription_payload: {
         Args: {
           target_subscription: Database["public"]["Tables"]["premium_subscriptions"]["Row"]
@@ -471,12 +633,30 @@ export type Database = {
         Args: { target_payload: Json }
         Returns: Json
       }
+      record_pair_streak_completion: {
+        Args: {
+          target_local_date: string
+          target_moment_id: string
+          target_pair_id: string
+        }
+        Returns: undefined
+      }
       reveal_moment: { Args: { target_moment_id: string }; Returns: Json }
       submit_question_contribution: {
         Args: {
           response_choice?: string
           response_text?: string
           target_moment_id: string
+        }
+        Returns: Json
+      }
+      update_important_date: {
+        Args: {
+          date_kind: string
+          date_name: string
+          date_recurrence?: string
+          date_value: string
+          target_date_id: string
         }
         Returns: Json
       }

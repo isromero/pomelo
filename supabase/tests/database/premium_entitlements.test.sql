@@ -67,6 +67,10 @@ reset role;
 update public.moments
 set local_date = local_date - 1
 where id = ((select payload ->> 'id' from premium_test_results where label = 'first'))::uuid;
+update public.moments
+set normal_expires_at = now() + interval '1 day',
+    recovery_expires_at = now() + interval '2 days'
+where id = ((select payload ->> 'id' from premium_test_results where label = 'first'))::uuid;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', true);
@@ -80,6 +84,10 @@ select is(
 reset role;
 update public.moments
 set local_date = local_date - 1
+where id = ((select payload ->> 'id' from premium_test_results where label = 'first'))::uuid;
+update public.moments
+set normal_expires_at = now() + interval '1 day',
+    recovery_expires_at = now() + interval '2 days'
 where id = ((select payload ->> 'id' from premium_test_results where label = 'first'))::uuid;
 update premium_test_results
 set payload = (select payload from premium_test_results where label = 'incomplete-retry')
