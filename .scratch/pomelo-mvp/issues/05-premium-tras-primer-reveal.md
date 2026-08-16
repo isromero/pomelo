@@ -1,6 +1,6 @@
 # Premium después del primer Reveal
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Parent
 
@@ -30,7 +30,7 @@ Convertir el primer Reveal gratuito en el punto de monetización real. La pareja
 - [x] Restaurar en otro dispositivo recupera la propiedad y la proyección correctas.
 - [x] Cancelar conserva acceso hasta el final del periodo pagado; grace period y expiry se reflejan sin borrar recuerdos.
 - [x] Cerrar el paywall o expirar deja Pom y el primer recuerdo visibles en la pantalla normal, sin etiquetas técnicas como "Archive Mode" o "preview"; también bloquea la generación del siguiente momento.
-- [ ] Al desvincular, Premium sigue al Subscriber y la antigua Pair queda archivada.
+- [x] Al desvincular, Premium sigue al Subscriber y la antigua Pair queda archivada.
 - [x] Webhooks duplicados, retrasados o fuera de orden no duplican ni revocan incorrectamente el entitlement.
 
 ## Blocked by
@@ -39,4 +39,4 @@ Convertir el primer Reveal gratuito en el punto de monetización real. La pareja
 
 ## Comments
 
-- Premium validado con `premium_entitlements.test.sql`, tests del controller, integración RevenueCat/Supabase y paywall ES/EN. El criterio de desvinculación con transferencia explícita de Premium queda pendiente.
+- Premium validado con `premium_entitlements.test.sql`, `premium_unlink.test.sql`, tests del controller, integración RevenueCat/Supabase y paywall ES/EN.
