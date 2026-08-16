@@ -211,6 +211,11 @@ export function HomeScreen({
       ),
     [memoryCount, t],
   );
+  const showPremiumPrompt =
+    pairStatus === 'active' &&
+    momentRuntime.status === 'ready' &&
+    memoryCount > 0 &&
+    premium.access !== 'premium';
   const date = waitingForPartner
     ? t('home.waiting.date')
     : displayMoment
@@ -282,6 +287,12 @@ export function HomeScreen({
                 syncPending={momentRuntime.syncPending}
               />
             )}
+            {showPremiumPrompt ? (
+              <PremiumNextStep
+                onPress={() => setPaywallVisible(true)}
+                syncing={premium.storeEntitled}
+              />
+            ) : null}
           </View>
         </ScrollView>
 
@@ -294,6 +305,43 @@ export function HomeScreen({
         visible={premium.access !== 'premium' && paywallVisible}
       />
     </SafeAreaView>
+  );
+}
+
+function PremiumNextStep({ onPress, syncing }: { onPress(): void; syncing: boolean }) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+
+  return (
+    <Pressable
+      accessibilityLabel={t('premium.next.cta')}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.premiumPrompt, pressed && styles.pressed]}>
+      <View style={styles.premiumPromptHeader}>
+        <View style={styles.premiumPromptIcon}>
+          <Ionicons color={colors.ink} name="lock-open-outline" size={21} />
+        </View>
+        <View style={styles.premiumPromptCopy}>
+          <Text style={styles.premiumPromptEyebrow}>
+            {t(syncing ? 'premium.next.syncEyebrow' : 'premium.next.eyebrow')}
+          </Text>
+          <Text style={styles.premiumPromptTitle}>
+            {t(syncing ? 'premium.next.syncTitle' : 'premium.next.title')}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.premiumPromptBody}>
+        {t(syncing ? 'premium.next.syncBody' : 'premium.next.body')}
+      </Text>
+      <View style={styles.premiumPromptAction}>
+        <Text style={styles.premiumPromptActionText}>
+          {t(syncing ? 'premium.checkActivation' : 'premium.next.cta')}
+        </Text>
+        <Ionicons color={colors.white} name="arrow-forward" size={18} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -578,6 +626,60 @@ const createStyles = (colors: SemanticColors) => StyleSheet.create({
     color: colors.white,
     fontFamily: fonts.bodyBold,
     fontSize: 11,
+  },
+  premiumPrompt: {
+    backgroundColor: colors.ink,
+    borderRadius: 24,
+    gap: 15,
+    marginTop: 4,
+    padding: 18,
+  },
+  premiumPromptHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  premiumPromptIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.reward,
+    borderRadius: 20,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  premiumPromptCopy: { flex: 1, gap: 3 },
+  premiumPromptEyebrow: {
+    color: colors.reward,
+    fontFamily: fonts.bodyBold,
+    fontSize: 9,
+    letterSpacing: 0.65,
+  },
+  premiumPromptTitle: {
+    color: colors.background,
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 20,
+    letterSpacing: -0.25,
+    lineHeight: 24,
+  },
+  premiumPromptBody: {
+    color: colors.background,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  premiumPromptAction: {
+    alignItems: 'center',
+    backgroundColor: colors.action,
+    borderRadius: radii.full,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  premiumPromptActionText: {
+    color: colors.white,
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
   },
   pressed: { opacity: 0.7 },
 });

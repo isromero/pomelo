@@ -41,6 +41,7 @@ export type PremiumStoreState = {
 export type PremiumErrorCode =
   | 'configuration'
   | 'network'
+  | 'purchaseNotActivated'
   | 'unexpected'
   | 'unavailable';
 
@@ -139,11 +140,11 @@ export class PremiumController {
   }
 
   async purchase(plan: PremiumPlanId) {
-    if (
-      this.snapshot.busy ||
-      this.snapshot.access === 'premium' ||
-      !this.snapshot.offers.some((offer) => offer.plan === plan)
-    ) {
+    if (this.snapshot.busy || this.snapshot.access === 'premium') {
+      return;
+    }
+    if (!this.snapshot.offers.some((offer) => offer.plan === plan)) {
+      this.update({ error: 'unavailable' });
       return;
     }
 
@@ -152,6 +153,9 @@ export class PremiumController {
     try {
       const storeEntitled = await this.gateway.purchase(plan);
       await this.loadState(operation, storeEntitled);
+      if (operation === this.operation && !storeEntitled) {
+        this.update({ error: 'purchaseNotActivated' });
+      }
     } catch (error) {
       if (operation === this.operation) {
         this.update({ busy: false, error: errorCode(error) });

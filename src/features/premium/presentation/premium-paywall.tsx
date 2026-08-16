@@ -29,6 +29,8 @@ function errorKey(error: PremiumErrorCode): TranslationKey {
       return 'premium.error.configuration';
     case 'network':
       return 'premium.error.network';
+    case 'purchaseNotActivated':
+      return 'premium.error.purchaseNotActivated';
     case 'unavailable':
       return 'premium.error.unavailable';
     default:
@@ -127,7 +129,7 @@ export function PremiumPaywall({
   const selectedBilling = selectedPlan === 'annual'
     ? replaceValue(t('premium.billing.annual'), 'price', annualPrice)
     : replaceValue(t('premium.billing.monthly'), 'price', monthlyPrice);
-  const canPurchase = offers.length === 2 && access !== 'premium';
+  const canPurchase = Boolean(annualOffer && monthlyOffer) && access !== 'premium' && !storeEntitled;
   const entitlementDate = entitlement?.expiresAt
     ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(
         new Date(entitlement.expiresAt),
@@ -215,7 +217,16 @@ export function PremiumPaywall({
 
           {error && <Text style={styles.error}>{t(errorKey(error))}</Text>}
           {storeEntitled && access !== 'premium' && (
-            <Text style={styles.syncing}>{t('premium.purchaseSync')}</Text>
+            <View style={styles.syncBox}>
+              <Text style={styles.syncing}>{t('premium.purchaseSync')}</Text>
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy}
+                onPress={() => void controller.refresh()}
+                style={({ pressed }) => [styles.syncAction, busy && styles.disabled, pressed && styles.pressed]}>
+                <Text style={styles.syncActionText}>{t('premium.checkActivation')}</Text>
+              </Pressable>
+            </View>
           )}
           {entitlement?.status === 'cancelled' && entitlementDate && (
             <Text style={styles.renewal}>{t('premium.cancelled').replace('{date}', entitlementDate)}</Text>
@@ -459,7 +470,15 @@ const createStyles = (colors: SemanticColors) =>
     renewal: { color: colors.inkSecondary, fontFamily: fonts.body, fontSize: 10, lineHeight: 15 },
     noTrial: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, lineHeight: 15 },
     error: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 17 },
+    syncBox: { gap: 6 },
     syncing: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 17 },
+    syncAction: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center' },
+    syncActionText: {
+      color: colors.actionDeep,
+      fontFamily: fonts.bodyBold,
+      fontSize: 11,
+      textDecorationLine: 'underline',
+    },
     footer: {
       backgroundColor: colors.background,
       borderTopColor: colors.borderSoft,
