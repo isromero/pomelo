@@ -1,6 +1,6 @@
 # Important Dates y Pair space
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Parent
 
@@ -16,16 +16,16 @@ Crear un Pair space ligero que reúna cumpleaños, aniversario, viajes y fechas 
 
 ## Acceptance criteria
 
-- [ ] El Pair space muestra la birth date de cada Profile según permisos y el aniversario compartido de la Pair.
-- [ ] Un miembro puede crear una Important Date de viaje o personalizada con nombre y fecha futura.
-- [ ] Las reglas de edición distinguen fechas personales de Profile y fechas propiedad de la Pair.
-- [ ] Editar o eliminar una Important Date actualiza ambos dispositivos y no deja cuentas atrás obsoletas.
-- [ ] Se calcula y muestra de forma estable la siguiente Important Date, incluidos cambios de zona horaria y año.
-- [ ] Una Important Date pasada sigue una regla explícita de repetición o archivo y no reaparece como futura por error.
-- [ ] Existe un contrato de datos seguro y pequeño para que widgets puedan mostrar la próxima cuenta atrás.
-- [ ] Crear, editar o alcanzar una Important Date no genera Memory, no avanza Streak y no incrementa Pom Progress.
-- [ ] Un tercero no puede leer las fechas de una Pair y unlinking elimina su exposición en el dispositivo correspondiente.
-- [ ] Pruebas cubren cumpleaños, aniversario, viaje, personalizada, edición, eliminación, recurrencia y zonas horarias.
+- [x] El Pair space muestra la birth date de cada Profile según permisos y el aniversario compartido de la Pair.
+- [x] Un miembro puede crear una Important Date de viaje o personalizada con nombre y fecha futura.
+- [x] Las reglas de edición distinguen fechas personales de Profile y fechas propiedad de la Pair.
+- [x] Editar o eliminar una Important Date actualiza ambos dispositivos y no deja cuentas atrás obsoletas.
+- [x] Se calcula y muestra de forma estable la siguiente Important Date, incluidos cambios de zona horaria y año.
+- [x] Una Important Date pasada sigue una regla explícita de repetición o archivo y no reaparece como futura por error.
+- [x] Existe un contrato de datos seguro y pequeño para que widgets puedan mostrar la próxima cuenta atrás.
+- [x] Crear, editar o alcanzar una Important Date no genera Memory, no avanza Streak y no incrementa Pom Progress.
+- [x] Un tercero no puede leer las fechas de una Pair y unlinking elimina su exposición en el dispositivo correspondiente.
+- [x] Pruebas cubren cumpleaños, aniversario, viaje, personalizada, edición, eliminación, recurrencia y zonas horarias.
 
 ## Blocked by
 
@@ -33,3 +33,7 @@ Crear un Pair space ligero que reúna cumpleaños, aniversario, viajes y fechas 
 
 ## Comments
 
+- 2026-08-16 - Implementado en `766aa24` con Pair space, birth dates, aniversario, Important Dates, recurrencia, cuenta atrás, permisos, realtime y contrato seguro para widgets.
+- 2026-08-16 - La validación de nombre y fecha ahora muestra el motivo concreto; `2000-12-12` se rechaza como fecha pasada. Correcciones en `7eea6f4` y `1c2a517`.
+- 2026-08-16 - El contrato de datos para widgets está cubierto en este issue; el renderizado nativo de widgets queda para los issues 14 y 15.
+- 2026-08-16 - Verificado con 17 suites y 83 tests Jest, `npm run typecheck`, `npm run lint` y la suite SQL de lifecycle/dates (141 aserciones).

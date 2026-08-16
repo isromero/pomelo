@@ -1,6 +1,6 @@
 # Lifecycle resistente, recuperación y Streak
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Parent
 
@@ -16,19 +16,23 @@ Endurecer el Question Moment ya funcional para que el ritual sobreviva a días o
 
 ## Acceptance criteria
 
-- [ ] Cada Moment tiene una ventana normal de 24 horas y una recuperación adicional de 24 horas calculadas con reglas Pair-scoped explícitas.
-- [ ] Home muestra tiempo restante y distingue claramente ventana normal, recuperación y expiración.
+- [x] Cada Moment tiene una ventana normal de 24 horas y una recuperación adicional de 24 horas calculadas con reglas Pair-scoped explícitas.
+- [x] Home muestra tiempo restante y distingue claramente ventana normal, recuperación y expiración.
 - [x] Una Contribution pendiente puede reintentarse después de perder conexión sin duplicarse ni cambiar la enviada previamente.
-- [ ] El trabajo todavía no enviado se conserva de forma segura en el dispositivo y comunica cuándo falta sincronizar.
-- [ ] Un Moment con una sola Contribution nunca revela esa aportación ni crea una Memory conjunta al expirar.
-- [ ] Un Moment expirado deja un estado estable y no bloquea la generación válida del siguiente día.
-- [ ] Streak aumenta una sola vez cuando ambos miembros completan el Moment dentro de la ventana permitida.
-- [ ] Existe una recuperación gratuita limitada del Streak con reglas visibles y protegidas contra reintentos duplicados.
-- [ ] Romper el Streak conserva el récord histórico, Memories y Progress y no genera un estado negativo de Pom.
-- [ ] Pruebas con reloj controlado cubren cambio de día, recuperación, expiración, reintento, dos clientes concurrentes y zonas horarias distintas.
+- [x] El trabajo todavía no enviado se conserva de forma segura en el dispositivo y comunica cuándo falta sincronizar.
+- [x] Un Moment con una sola Contribution nunca revela esa aportación ni crea una Memory conjunta al expirar.
+- [x] Un Moment expirado deja un estado estable y no bloquea la generación válida del siguiente día.
+- [x] Streak aumenta una sola vez cuando ambos miembros completan el Moment dentro de la ventana permitida.
+- [x] Existe una recuperación gratuita limitada del Streak con reglas visibles y protegidas contra reintentos duplicados.
+- [x] Romper el Streak conserva el récord histórico, Memories y Progress y no genera un estado negativo de Pom.
+- [x] Pruebas con reloj controlado cubren cambio de día, recuperación, expiración, reintento, dos clientes concurrentes y zonas horarias distintas.
 
 ## Blocked by
 
 - [04 - Question: primer Moment completo hasta Memory](04-question-hasta-memory.md)
 
 ## Comments
+
+- 2026-08-16 - Implementado en `766aa24` con el seguimiento de ciclo de vida, recuperación, Streak compartido, persistencia de borradores y pruebas de base de datos.
+- 2026-08-16 - La interfaz de Streak queda deliberadamente en el alcance MVP: contador actual en el encabezado y aviso de recuperación. No incluye todavía una pantalla de detalle, historial visual ni inventario de "hielos"; son mejoras futuras.
+- 2026-08-16 - Verificado con 17 suites y 83 tests Jest, `npm run typecheck`, `npm run lint` y la suite SQL de lifecycle/dates (141 aserciones).
