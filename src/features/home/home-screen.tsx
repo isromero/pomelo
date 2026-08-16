@@ -1,22 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppearance } from '@/appearance/appearance-provider';
 import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
-import { DailyMomentCard, MomentState } from '@/components/pomelo/daily-moment-card';
 import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
+import type { MomentErrorCode } from '@/features/moment/application/moment-controller';
+import type { DailyMoment } from '@/features/moment/domain/moment';
+import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
+import { useMoment } from '@/features/moment/presentation/moment-provider';
 import type { PairStatus } from '@/features/pair/application/pair-controller';
 import { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 
 const pomHomeReady = require('@/assets/images/pom/pom-calm.png');
 
-const stateOrder: MomentState[] = ['answer', 'waiting', 'ready', 'complete'];
+type MomentState = 'answer' | 'complete' | 'ready' | 'waiting';
 
 const heroCopy: Record<
   MomentState,
@@ -24,41 +35,69 @@ const heroCopy: Record<
     background: keyof SemanticColors;
     eyebrow: TranslationKey;
     title: TranslationKey;
-    progress: TranslationKey;
   }
 > = {
   answer: {
     background: 'rewardSoft',
     eyebrow: 'home.hero.answer.eyebrow',
     title: 'home.hero.answer.title',
-    progress: 'home.hero.answer.progress',
   },
   waiting: {
     background: 'backgroundRaised',
     eyebrow: 'home.hero.waiting.eyebrow',
     title: 'home.hero.waiting.title',
-    progress: 'home.hero.waiting.progress',
   },
   ready: {
     background: 'actionSoft',
     eyebrow: 'home.hero.ready.eyebrow',
     title: 'home.hero.ready.title',
-    progress: 'home.hero.ready.progress',
   },
   complete: {
     background: 'rewardSoft',
     eyebrow: 'home.hero.complete.eyebrow',
     title: 'home.hero.complete.title',
-    progress: 'home.hero.complete.progress',
   },
 };
 
 const waitingHeroCopy = {
   background: 'informativeSoft' as const,
   eyebrow: 'home.waiting.eyebrow' as const,
-  progress: 'home.waiting.progress' as const,
   title: 'home.waiting.title' as const,
 };
+
+function momentState(moment: DailyMoment | null): MomentState {
+  if (!moment || moment.status === 'open' || moment.status === 'partially_submitted') {
+    return moment?.ownContribution ? 'waiting' : 'answer';
+  }
+  if (moment.status === 'ready') {
+    return 'ready';
+  }
+  return 'complete';
+}
+
+function formatMomentDate(value: string, locale: 'en' | 'es') {
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    weekday: 'long',
+  }).format(new Date(year, month - 1, day, 12));
+}
+
+function momentErrorKey(error: MomentErrorCode | null): TranslationKey {
+  switch (error) {
+    case 'invalidResponse':
+      return 'moment.error.invalidResponse';
+    case 'momentClosed':
+      return 'moment.error.momentClosed';
+    case 'momentNotReady':
+      return 'moment.error.momentNotReady';
+    case 'network':
+      return 'moment.error.network';
+    default:
+      return 'moment.error.unexpected';
+  }
+}
 
 export function HomeScreen({
   pairStatus,
@@ -67,16 +106,26 @@ export function HomeScreen({
 }) {
   const { colors } = useAppearance();
   const { controller, profile } = useAccount();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
+  const momentRuntime = useMoment();
   const styles = createStyles(colors);
-  const [momentState, setMomentState] = useState<MomentState>('answer');
   const waitingForPartner = pairStatus === 'waiting';
-  const copy = waitingForPartner ? waitingHeroCopy : heroCopy[momentState];
-
-  const advanceMoment = () => {
-    const currentIndex = stateOrder.indexOf(momentState);
-    setMomentState(stateOrder[(currentIndex + 1) % stateOrder.length]);
-  };
+  const currentMomentState = momentState(momentRuntime.moment);
+  const copy = waitingForPartner ? waitingHeroCopy : heroCopy[currentMomentState];
+  const memoryCount = momentRuntime.history.length;
+  const progressText = useMemo(
+    () =>
+      t(memoryCount === 1 ? 'home.progress.one' : 'home.progress.many').replace(
+        '{count}',
+        String(memoryCount),
+      ),
+    [memoryCount, t],
+  );
+  const date = waitingForPartner
+    ? t('home.waiting.date')
+    : momentRuntime.moment
+      ? formatMomentDate(momentRuntime.moment.localDate, locale)
+      : t('home.date');
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
@@ -84,6 +133,7 @@ export function HomeScreen({
         <ScrollView
           bounces={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <AppHeader
             avatarKey={profile?.avatarKey ?? 'calm'}
@@ -93,7 +143,7 @@ export function HomeScreen({
 
           <View style={styles.homeContent}>
             <Text style={styles.date}>
-              {t(waitingForPartner ? 'home.waiting.date' : 'home.date')}
+              {date}
             </Text>
 
             <View style={[styles.pomHero, { backgroundColor: colors[copy.background] }]}>
@@ -107,15 +157,31 @@ export function HomeScreen({
                 <Text style={styles.heroEyebrow}>{t(copy.eyebrow)}</Text>
                 <Text style={styles.heroTitle}>{t(copy.title)}</Text>
                 <View style={styles.progressPill}>
-                  <Text style={styles.progressText}>{t(copy.progress)}</Text>
+                  <Text style={styles.progressText}>
+                    {waitingForPartner ? t('home.waiting.progress') : progressText}
+                  </Text>
                 </View>
               </View>
             </View>
 
             {waitingForPartner ? (
               <WaitingMomentCard />
+            ) : momentRuntime.status === 'loading' || momentRuntime.status === 'idle' ? (
+              <MomentLoadingCard />
+            ) : momentRuntime.status === 'error' || !momentRuntime.moment ? (
+              <MomentFailureCard
+                error={momentRuntime.error}
+                onRetry={() => void momentRuntime.controller.refresh()}
+              />
             ) : (
-              <DailyMomentCard onAction={advanceMoment} state={momentState} />
+              <DailyMomentCard
+                busy={momentRuntime.busy}
+                error={momentRuntime.error}
+                key={momentRuntime.moment.id}
+                moment={momentRuntime.moment}
+                onReveal={() => void momentRuntime.controller.revealMoment()}
+                onSubmit={(response) => void momentRuntime.controller.submitQuestion(response)}
+              />
             )}
           </View>
         </ScrollView>
@@ -162,6 +228,42 @@ function WaitingMomentCard() {
         style={({ pressed }) => [styles.waitingAction, pressed && styles.pressed]}>
         <Text style={styles.waitingActionText}>{t('home.waiting.cardAction')}</Text>
         <Ionicons color={colors.white} name="arrow-forward" size={18} />
+      </Pressable>
+    </View>
+  );
+}
+
+function MomentLoadingCard() {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+  return (
+    <View style={[styles.statusCard, styles.statusCardCentered]}>
+      <ActivityIndicator color={colors.action} size="large" />
+      <Text style={styles.statusText}>{t('runtime.loading')}</Text>
+    </View>
+  );
+}
+
+function MomentFailureCard({
+  error,
+  onRetry,
+}: {
+  error: MomentErrorCode | null;
+  onRetry(): void;
+}) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+  return (
+    <View style={[styles.statusCard, styles.statusCardCentered]}>
+      <Ionicons color={colors.actionDeep} name="cloud-offline-outline" size={38} />
+      <Text style={styles.statusText}>{t(error ? momentErrorKey(error) : 'moment.loadFailure')}</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onRetry}
+        style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
+        <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
       </Pressable>
     </View>
   );
@@ -259,6 +361,31 @@ const createStyles = (colors: SemanticColors) => StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 20,
   },
+  statusCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 28,
+    borderWidth: 1,
+    minHeight: 240,
+    padding: 22,
+  },
+  statusCardCentered: { alignItems: 'center', gap: 16, justifyContent: 'center' },
+  statusText: {
+    color: colors.inkSecondary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    alignItems: 'center',
+    backgroundColor: colors.actionSoft,
+    borderRadius: radii.full,
+    height: 46,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  retryButtonText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 12 },
   waitingMeta: {
     alignItems: 'center',
     flexDirection: 'row',

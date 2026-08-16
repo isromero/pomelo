@@ -17,6 +17,10 @@ import type { PomeloSupabaseClient } from '@/lib/supabase';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
+function deviceTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
+}
+
 function mapProfile(row: ProfileRow): Profile | null {
   if (!row.avatar_key || !row.birth_date) {
     return null;
@@ -65,6 +69,7 @@ export class SupabaseProfileRepository implements ProfileRepository {
         birth_date: input.birthDate,
         display_name: input.displayName.trim(),
         locale: input.locale,
+        time_zone: deviceTimeZone(),
       })
       .eq('id', userId)
       .select('*')

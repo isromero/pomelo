@@ -9,6 +9,162 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      contributions: {
+        Row: {
+          id: string
+          moment_id: string
+          response_choice: string | null
+          response_text: string | null
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          moment_id: string
+          response_choice?: string | null
+          response_text?: string | null
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          moment_id?: string
+          response_choice?: string | null
+          response_text?: string | null
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contributions_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memories: {
+        Row: {
+          created_at: string
+          id: string
+          local_date: string
+          moment_id: string
+          pair_id: string
+          pom_state: string
+          prompt_concept_key: string
+          prompt_en: string
+          prompt_es: string
+          response_options: Json
+          response_type: string
+          revealed_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          local_date: string
+          moment_id: string
+          pair_id: string
+          pom_state?: string
+          prompt_concept_key: string
+          prompt_en: string
+          prompt_es: string
+          response_options?: Json
+          response_type: string
+          revealed_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          local_date?: string
+          moment_id?: string
+          pair_id?: string
+          pom_state?: string
+          prompt_concept_key?: string
+          prompt_en?: string
+          prompt_es?: string
+          response_options?: Json
+          response_type?: string
+          revealed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memories_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: true
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memories_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memories_prompt_concept_key_fkey"
+            columns: ["prompt_concept_key"]
+            isOneToOne: false
+            referencedRelation: "prompt_concepts"
+            referencedColumns: ["concept_key"]
+          },
+        ]
+      }
+      moments: {
+        Row: {
+          created_at: string
+          format: string
+          id: string
+          is_free: boolean
+          local_date: string
+          pair_id: string
+          prompt_concept_key: string
+          ready_at: string | null
+          revealed_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          format: string
+          id?: string
+          is_free?: boolean
+          local_date: string
+          pair_id: string
+          prompt_concept_key: string
+          ready_at?: string | null
+          revealed_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          format?: string
+          id?: string
+          is_free?: boolean
+          local_date?: string
+          pair_id?: string
+          prompt_concept_key?: string
+          ready_at?: string | null
+          revealed_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moments_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moments_prompt_concept_key_fkey"
+            columns: ["prompt_concept_key"]
+            isOneToOne: false
+            referencedRelation: "prompt_concepts"
+            referencedColumns: ["concept_key"]
+          },
+        ]
+      }
       pair_invitations: {
         Row: {
           accepted_at: string | null
@@ -100,6 +256,7 @@ export type Database = {
           dissolved_at: string | null
           id: string
           status: string
+          time_zone: string
         }
         Insert: {
           activated_at?: string | null
@@ -109,6 +266,7 @@ export type Database = {
           dissolved_at?: string | null
           id?: string
           status?: string
+          time_zone?: string
         }
         Update: {
           activated_at?: string | null
@@ -118,6 +276,7 @@ export type Database = {
           dissolved_at?: string | null
           id?: string
           status?: string
+          time_zone?: string
         }
         Relationships: []
       }
@@ -130,6 +289,7 @@ export type Database = {
           display_name: string
           id: string
           locale: string
+          time_zone: string
           updated_at: string
         }
         Insert: {
@@ -140,6 +300,7 @@ export type Database = {
           display_name: string
           id: string
           locale?: string
+          time_zone?: string
           updated_at?: string
         }
         Update: {
@@ -150,6 +311,7 @@ export type Database = {
           display_name?: string
           id?: string
           locale?: string
+          time_zone?: string
           updated_at?: string
         }
         Relationships: []
@@ -162,6 +324,8 @@ export type Database = {
           format: string
           prompt_en: string
           prompt_es: string
+          response_options: Json
+          response_type: string
         }
         Insert: {
           active?: boolean
@@ -170,6 +334,8 @@ export type Database = {
           format: string
           prompt_en: string
           prompt_es: string
+          response_options?: Json
+          response_type?: string
         }
         Update: {
           active?: boolean
@@ -178,6 +344,8 @@ export type Database = {
           format?: string
           prompt_en?: string
           prompt_es?: string
+          response_options?: Json
+          response_type?: string
         }
         Relationships: []
       }
@@ -191,6 +359,12 @@ export type Database = {
         Returns: Json
       }
       cancel_pair_invitation: { Args: { invitation_id: string }; Returns: Json }
+      contribution_payload: {
+        Args: {
+          target_contribution: Database["public"]["Tables"]["contributions"]["Row"]
+        }
+        Returns: Json
+      }
       create_pair_invitation: { Args: never; Returns: Json }
       create_pair_invitation_record: {
         Args: { target_creator_id: string; target_pair_id: string }
@@ -201,10 +375,30 @@ export type Database = {
         Returns: Json
       }
       dissolve_pair: { Args: never; Returns: Json }
+      get_daily_moment: { Args: never; Returns: Json }
+      get_memory_history: { Args: never; Returns: Json }
       get_pair_state: { Args: never; Returns: Json }
+      list_memories: { Args: never; Returns: Json }
+      memory_payload_for_user: {
+        Args: { target_memory_id: string; target_user_id: string }
+        Returns: Json
+      }
+      moment_payload_for_user: {
+        Args: { target_moment_id: string; target_user_id: string }
+        Returns: Json
+      }
       pair_state_for_user: { Args: { target_user_id: string }; Returns: Json }
       preview_pair_invitation: {
         Args: { invitation_credential: string }
+        Returns: Json
+      }
+      reveal_moment: { Args: { target_moment_id: string }; Returns: Json }
+      submit_question_contribution: {
+        Args: {
+          response_choice?: string
+          response_text?: string
+          target_moment_id: string
+        }
         Returns: Json
       }
     }
