@@ -22,7 +22,6 @@ import type { DailyMoment, Memory } from '@/features/moment/domain/moment';
 import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
 import { useMoment } from '@/features/moment/presentation/moment-provider';
 import type { PairStatus } from '@/features/pair/application/pair-controller';
-import { PremiumArchiveCard, PremiumPreviewPanel } from '@/features/premium/presentation/premium-preview-panel';
 import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
 import { TranslationKey } from '@/localization/catalogs';
@@ -78,6 +77,22 @@ function momentState(moment: DailyMoment | null): MomentState {
   return 'complete';
 }
 
+function dailyMomentFromMemory(memory: Memory): DailyMoment {
+  return {
+    format: 'question',
+    id: memory.momentId,
+    isFree: true,
+    localDate: memory.localDate,
+    memoryId: memory.id,
+    ownContribution: memory.ownContribution,
+    pairId: memory.pairId,
+    partner: memory.partner,
+    pomState: memory.pomState,
+    prompt: memory.prompt,
+    status: 'revealed',
+  };
+}
+
 function formatMomentDate(value: string, locale: 'en' | 'es') {
   const [year, month, day] = value.slice(0, 10).split('-').map(Number);
   return new Intl.DateTimeFormat(locale, {
@@ -114,14 +129,15 @@ export function HomeScreen({
   const premium = usePremium();
   const styles = createStyles(colors);
   const waitingForPartner = pairStatus === 'waiting';
-  const archiveFromServer =
-    pairStatus === 'archived' ||
-    momentRuntime.error === 'premiumRequired' ||
-    momentRuntime.error === 'pairNotActive';
+  const firstMemory = momentRuntime.history[momentRuntime.history.length - 1] ?? null;
+  const displayMoment = momentRuntime.moment ?? (firstMemory ? dailyMomentFromMemory(firstMemory) : null);
+  const displayError =
+    momentRuntime.error === 'premiumRequired' || momentRuntime.error === 'pairNotActive'
+      ? null
+      : momentRuntime.error;
   const [paywallVisible, setPaywallVisible] = useState(false);
-  const [dismissedMemoryId, setDismissedMemoryId] = useState<string | null>(null);
   const promptedMemoryIdRef = useRef<string | null>(null);
-  const currentMemoryId = momentRuntime.moment?.memoryId ?? momentRuntime.history[0]?.id ?? null;
+  const currentMemoryId = momentRuntime.moment?.memoryId ?? firstMemory?.id ?? null;
 
   useEffect(() => {
     if (premium.access === 'premium') {
@@ -143,12 +159,7 @@ export function HomeScreen({
     return () => clearTimeout(timer);
   }, [currentMemoryId, momentRuntime.status, premium.access, premium.status]);
 
-  const archiveMode =
-    premium.access !== 'premium' &&
-    (archiveFromServer ||
-      premium.access === 'archive' ||
-      (dismissedMemoryId !== null && dismissedMemoryId === currentMemoryId));
-  const currentMomentState = archiveMode ? 'complete' : momentState(momentRuntime.moment);
+  const currentMomentState = momentState(displayMoment);
   const copy = waitingForPartner ? waitingHeroCopy : heroCopy[currentMomentState];
   const memoryCount = momentRuntime.history.length;
   const progressText = useMemo(
@@ -161,10 +172,8 @@ export function HomeScreen({
   );
   const date = waitingForPartner
     ? t('home.waiting.date')
-    : archiveMode
-      ? t('premium.archive.eyebrow')
-    : momentRuntime.moment
-      ? formatMomentDate(momentRuntime.moment.localDate, locale)
+    : displayMoment
+      ? formatMomentDate(displayMoment.localDate, locale)
       : t('home.date');
 
   return (
@@ -206,15 +215,9 @@ export function HomeScreen({
 
             {waitingForPartner ? (
               <WaitingMomentCard />
-            ) : archiveFromServer && !momentRuntime.moment ? (
-              <ArchiveModeContent
-                hasMemory={momentRuntime.history.length > 0}
-                memory={momentRuntime.history[0] ?? null}
-                onUnlock={() => setPaywallVisible(true)}
-              />
             ) : momentRuntime.status === 'loading' || momentRuntime.status === 'idle' ? (
               <MomentLoadingCard />
-            ) : momentRuntime.status === 'error' || !momentRuntime.moment ? (
+            ) : momentRuntime.status === 'error' || !displayMoment ? (
               <MomentFailureCard
                 error={momentRuntime.error}
                 onRetry={() => void momentRuntime.controller.refresh()}
@@ -222,25 +225,12 @@ export function HomeScreen({
             ) : (
               <DailyMomentCard
                 busy={momentRuntime.busy}
-                error={momentRuntime.error}
-                key={momentRuntime.moment.id}
-                moment={momentRuntime.moment}
+                error={displayError}
+                key={displayMoment.id}
+                moment={displayMoment}
                 onReveal={() => void momentRuntime.controller.revealMoment()}
                 onSubmit={(response) => void momentRuntime.controller.submitQuestion(response)}
               />
-            )}
-
-            {!waitingForPartner && premium.access !== 'premium' && momentRuntime.history.length > 0 && (
-              <>
-                {archiveMode && (
-                  <PremiumArchiveCard onUnlock={() => setPaywallVisible(true)} />
-                )}
-                <PremiumPreviewPanel
-                  onMapPress={() => router.push('/map')}
-                  onUnlock={() => setPaywallVisible(true)}
-                  onWidgetPress={() => router.push('/widget-preview')}
-                />
-              </>
             )}
           </View>
         </ScrollView>
@@ -250,66 +240,10 @@ export function HomeScreen({
       <PremiumPaywall
         onClose={() => {
           setPaywallVisible(false);
-          if (currentMemoryId) {
-            setDismissedMemoryId(currentMemoryId);
-          }
         }}
         visible={premium.access !== 'premium' && paywallVisible}
       />
     </SafeAreaView>
-  );
-}
-
-function ArchiveModeContent({
-  hasMemory,
-  memory,
-  onUnlock,
-}: {
-  hasMemory: boolean;
-  memory: Memory | null;
-  onUnlock(): void;
-}) {
-  const { colors } = useAppearance();
-  const { t } = useLocale();
-  const styles = createStyles(colors);
-  return (
-    <View style={[styles.statusCard, styles.archiveStatusCard]}>
-      <Ionicons color={colors.actionDeep} name="archive-outline" size={40} />
-      <Text style={styles.archiveStatusTitle}>{t('premium.archive.title')}</Text>
-      <Text style={styles.statusText}>
-        {hasMemory ? t('premium.archive.body') : t('premium.map.body')}
-      </Text>
-      {memory && <ArchiveMemoryHighlight memory={memory} />}
-      <Pressable
-        accessibilityRole="button"
-        onPress={onUnlock}
-        style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
-        <Text style={styles.retryButtonText}>{t('premium.archive.unlock')}</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function ArchiveMemoryHighlight({ memory }: { memory: Memory }) {
-  const { colors } = useAppearance();
-  const { t } = useLocale();
-  const styles = createStyles(colors);
-  const partnerText = memory.partner.contribution
-    ? memory.partner.contribution.responseText ?? memory.partner.contribution.responseChoice ?? ''
-    : t('history.missingContribution');
-  const ownText = memory.ownContribution.responseText ?? memory.ownContribution.responseChoice ?? '';
-  return (
-    <View style={styles.memoryHighlight}>
-      <Text style={styles.memoryPrompt}>{memory.prompt.text}</Text>
-      <View style={styles.memoryBubblePartner}>
-        <Text style={styles.memorySender}>{memory.partner.displayName}</Text>
-        <Text style={styles.memoryText}>{partnerText}</Text>
-      </View>
-      <View style={styles.memoryBubbleOwn}>
-        <Text style={styles.memorySender}>{t('moment.you')}</Text>
-        <Text style={styles.memoryText}>{ownText}</Text>
-      </View>
-    </View>
   );
 }
 
@@ -491,52 +425,6 @@ const createStyles = (colors: SemanticColors) => StyleSheet.create({
     padding: 22,
   },
   statusCardCentered: { alignItems: 'center', gap: 16, justifyContent: 'center' },
-  archiveStatusCard: { alignItems: 'center', gap: 12, justifyContent: 'center', paddingVertical: 28 },
-  archiveStatusTitle: {
-    color: colors.ink,
-    fontFamily: fonts.displayBold,
-    fontSize: 21,
-    lineHeight: 26,
-    textAlign: 'center',
-  },
-  memoryHighlight: {
-    alignSelf: 'stretch',
-    backgroundColor: colors.surface,
-    borderColor: colors.borderSoft,
-    borderRadius: 19,
-    borderWidth: 1,
-    gap: 8,
-    padding: 13,
-  },
-  memoryPrompt: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 15, lineHeight: 20 },
-  memoryBubblePartner: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.backgroundRaised,
-    borderRadius: 14,
-    borderBottomLeftRadius: 4,
-    gap: 3,
-    maxWidth: '90%',
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-  },
-  memoryBubbleOwn: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors.actionSoft,
-    borderRadius: 14,
-    borderBottomRightRadius: 4,
-    gap: 3,
-    maxWidth: '90%',
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-  },
-  memorySender: {
-    color: colors.inkSecondary,
-    fontFamily: fonts.bodyBold,
-    fontSize: 8,
-    letterSpacing: 0.35,
-    textTransform: 'uppercase',
-  },
-  memoryText: { color: colors.ink, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
   statusText: {
     color: colors.inkSecondary,
     fontFamily: fonts.body,

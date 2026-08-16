@@ -12,12 +12,13 @@ Status: ready-for-agent
 
 ## What to build
 
-Convertir el primer Reveal gratuito en el punto de monetización real. La Pair debe ver primero su resultado y previews simuladas de Map y Widget Family; después, un Subscriber puede comprar o restaurar Premium mediante RevenueCat y ambos miembros reciben acceso. Cerrar, cancelar, caducar o desvincular debe producir el Archive Mode acordado sin perder la primera Memory.
+Convertir el primer Reveal gratuito en el punto de monetización real. La pareja debe ver primero su resultado y, después, el paywall. Sin Premium, la app conserva ese primer resultado como el contenido normal de lo de hoy, permite consultarlo también en Historia y no ofrece nuevas propuestas ni respuestas. Map y Widget Family siguen protegidos hasta activar Premium; un Subscriber puede comprar o restaurar Premium mediante RevenueCat y ambos miembros reciben acceso.
 
 ## Acceptance criteria
 
 - [ ] Crear cuenta, formar Pair y completar el primer Reveal no solicita tarjeta ni requiere Premium.
-- [ ] Después de la primera Memory se muestran previews simuladas dentro de la app para Map y Widget Family, no acceso funcional gratuito.
+- [ ] Después del primer Reveal, el primer resultado sigue visible como la pantalla normal de lo de hoy y también aparece en Historia.
+- [ ] Sin Premium no se muestra una nueva propuesta ni se puede enviar otra respuesta; Map y Widget Family permanecen protegidos.
 - [ ] El resultado del Reveal permanece visible antes de presentar el paywall y cerrar el paywall es una acción clara.
 - [ ] El paywall comunica `Una suscripción para los dos` y usa `Desbloquear Pomelo para los dos` como CTA principal.
 - [ ] Se ofrecen EUR 29.99 anual y EUR 7.99 mensual; el anual está recomendado y el importe real, renovación y cancelación son visibles.
@@ -27,8 +28,8 @@ Convertir el primer Reveal gratuito en el punto de monetización real. La Pair d
 - [ ] Una compra sandbox válida convierte al comprador en Subscriber y proyecta Premium sobre la Pair activa mediante un webhook idempotente.
 - [ ] El segundo miembro recibe Premium sin comprar y se impide una compra duplicada mientras la Pair ya tiene acceso.
 - [ ] Restaurar en otro dispositivo recupera la propiedad y la proyección correctas.
-- [ ] Cancelar conserva acceso hasta el final del periodo pagado; grace period y expiry se reflejan sin borrar Memories.
-- [ ] Cerrar el paywall o expirar deja Pom y la primera Memory visibles en Archive Mode y bloquea la generación del siguiente Moment.
+- [ ] Cancelar conserva acceso hasta el final del periodo pagado; grace period y expiry se reflejan sin borrar recuerdos.
+- [ ] Cerrar el paywall o expirar deja Pom y el primer recuerdo visibles en la pantalla normal, sin etiquetas técnicas como "Archive Mode" o "preview"; también bloquea la generación del siguiente momento.
 - [ ] Al desvincular, Premium sigue al Subscriber y la antigua Pair queda archivada.
 - [ ] Webhooks duplicados, retrasados o fuera de orden no duplican ni revocan incorrectamente el entitlement.
 

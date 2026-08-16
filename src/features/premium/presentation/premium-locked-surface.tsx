@@ -19,8 +19,8 @@ export function PremiumLockedSurface({
 
   return (
     <View style={styles.card}>
-      <View style={styles.previewStage}>
-        <View style={styles.previewShape}>
+      <View style={styles.featureStage}>
+        <View style={styles.featureShape}>
           <Ionicons
             color={colors.actionDeep}
             name={map ? 'map-outline' : 'phone-portrait-outline'}
@@ -33,7 +33,7 @@ export function PremiumLockedSurface({
       </View>
       <View style={styles.statusPill}>
         <Ionicons color={colors.actionDeep} name="sparkles-outline" size={14} />
-        <Text style={styles.statusText}>{t('premium.widget.status')}</Text>
+        <Text style={styles.statusText}>{t('premium.locked.eyebrow')}</Text>
       </View>
       <Text style={styles.title}>{t(map ? 'premium.map.title' : 'premium.widget.title')}</Text>
       <Text style={styles.body}>{t(map ? 'premium.map.body' : 'premium.widget.body')}</Text>
@@ -41,7 +41,7 @@ export function PremiumLockedSurface({
         accessibilityRole="button"
         onPress={onUnlock}
         style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
-        <Text style={styles.buttonText}>{t('premium.archive.unlock')}</Text>
+        <Text style={styles.buttonText}>{t('premium.unlock')}</Text>
         <Ionicons color={colors.white} name="arrow-forward" size={18} />
       </Pressable>
     </View>
@@ -59,7 +59,7 @@ const createStyles = (colors: SemanticColors) =>
       gap: 13,
       padding: 22,
     },
-    previewStage: {
+    featureStage: {
       alignItems: 'center',
       backgroundColor: colors.backgroundRaised,
       borderColor: colors.borderSoft,
@@ -71,7 +71,7 @@ const createStyles = (colors: SemanticColors) =>
       position: 'relative',
       width: '100%',
     },
-    previewShape: {
+    featureShape: {
       alignItems: 'center',
       backgroundColor: colors.rewardSoft,
       borderRadius: 52,

@@ -19,7 +19,7 @@ export function WidgetEntryScreen() {
     try {
       const locked = history.length > 0 && premium.access !== 'premium';
       PomeloStatusWidget.updateSnapshot({
-        action: t(locked ? 'premium.archive.unlock' : 'widget.action'),
+        action: t(locked ? 'premium.unlock' : 'widget.action'),
         title: t(locked ? 'premium.widget.title' : 'widget.title'),
       });
     } catch {

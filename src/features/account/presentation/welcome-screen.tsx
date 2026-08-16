@@ -70,7 +70,7 @@ export function WelcomeScreen() {
             <Image resizeMode="contain" source={pom} style={styles.pom} />
             <View style={styles.memoryTag}>
               <Ionicons color={palette.action} name="heart" size={15} />
-              <Text style={styles.memoryText}>+1 Memory</Text>
+              <Text style={styles.memoryText}>+1 momento</Text>
             </View>
           </View>
 

@@ -71,7 +71,7 @@ function MapContent({ pairStatus }: { pairStatus: Extract<PairStatus, 'active' |
             <View style={styles.copy}>
               <Text style={styles.eyebrow}>{t('section.map.eyebrow')}</Text>
               <Text style={styles.title}>{t('section.map.title')}</Text>
-              <Text style={styles.body}>{t('premium.preview.body')}</Text>
+              <Text style={styles.body}>{t('premium.locked.body')}</Text>
             </View>
             <PremiumLockedSurface kind="map" onUnlock={() => setPaywallVisible(true)} />
           </ScrollView>

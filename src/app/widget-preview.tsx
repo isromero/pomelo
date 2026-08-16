@@ -45,9 +45,9 @@ export default function WidgetPreviewRoute() {
           showStreak={pair.state.status !== 'waiting'}
         />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={styles.eyebrow}>{t('premium.preview.eyebrow')}</Text>
+          <Text style={styles.eyebrow}>{t('premium.locked.eyebrow')}</Text>
           <Text style={styles.title}>{t('premium.widget.title')}</Text>
-          <Text style={styles.body}>{t('premium.preview.body')}</Text>
+          <Text style={styles.body}>{t('premium.locked.body')}</Text>
           {pair.state.status === 'waiting' || history.length === 0 ? (
             <Text style={styles.body}>{t('section.history.waitingBody')}</Text>
           ) : premium.access === 'premium' ? (
