@@ -36,12 +36,17 @@ function errorKey(error: PremiumErrorCode): TranslationKey {
   }
 }
 
-function monthlyAmountPerPerson(offer: PremiumOffer | undefined) {
+function monthlyAmount(offer: PremiumOffer | undefined) {
   if (!offer) {
     return null;
   }
-  const monthlyAmount = offer.pricePerMonth ?? (offer.plan === 'annual' ? offer.amount / 12 : offer.amount);
-  return monthlyAmount > 0 ? monthlyAmount / 2 : null;
+  const amountPerMonth = offer.pricePerMonth ?? (offer.plan === 'annual' ? offer.amount / 12 : offer.amount);
+  return amountPerMonth > 0 ? amountPerMonth : null;
+}
+
+function monthlyAmountPerPerson(offer: PremiumOffer | undefined) {
+  const amount = monthlyAmount(offer);
+  return amount === null ? null : amount / 2;
 }
 
 function formatCurrency(
@@ -66,7 +71,12 @@ function savingsPercent(
   annualOffer: PremiumOffer | undefined,
   monthlyOffer: PremiumOffer | undefined,
 ) {
-  if (!annualOffer || !monthlyOffer || monthlyOffer.amount <= 0) {
+  if (
+    !annualOffer ||
+    !monthlyOffer ||
+    annualOffer.currencyCode !== monthlyOffer.currencyCode ||
+    monthlyOffer.amount <= 0
+  ) {
     return null;
   }
   const annualAtMonthlyPrice = monthlyOffer.amount * 12;
@@ -102,8 +112,18 @@ export function PremiumPaywall({
     annualOffer?.currencyCode ?? null,
     locale,
   );
+  const annualPerPairMonth = formatCurrency(
+    monthlyAmount(annualOffer),
+    annualOffer?.currencyCode ?? null,
+    locale,
+  );
   const monthlyPerPersonMonth = formatCurrency(
     monthlyAmountPerPerson(monthlyOffer),
+    monthlyOffer?.currencyCode ?? null,
+    locale,
+  );
+  const monthlyPerPairMonth = formatCurrency(
+    monthlyAmount(monthlyOffer),
     monthlyOffer?.currencyCode ?? null,
     locale,
   );
@@ -183,7 +203,10 @@ export function PremiumPaywall({
             recommended
             savings={annualSavings}
             selected={selectedPlan === 'annual'}
-            subline={annualPerPersonMonth
+            subline={annualPerPairMonth
+              ? replaceValue(t('premium.perPairMonth'), 'price', annualPerPairMonth)
+              : null}
+            detail={annualPerPersonMonth
               ? replaceValue(t('premium.perPersonMonth'), 'price', annualPerPersonMonth)
               : null}
             onPress={() => setSelectedPlan('annual')}
@@ -194,7 +217,10 @@ export function PremiumPaywall({
             label={t('premium.monthly')}
             savings={null}
             selected={selectedPlan === 'monthly'}
-            subline={monthlyPerPersonMonth
+            subline={monthlyPerPairMonth
+              ? replaceValue(t('premium.perPairMonth'), 'price', monthlyPerPairMonth)
+              : null}
+            detail={monthlyPerPersonMonth
               ? replaceValue(t('premium.perPersonMonth'), 'price', monthlyPerPersonMonth)
               : null}
             onPress={() => setSelectedPlan('monthly')}
@@ -275,6 +301,7 @@ function PlanCard({
   savings,
   selected,
   subline,
+  detail,
   onPress,
   styles,
 }: {
@@ -284,6 +311,7 @@ function PlanCard({
   savings: number | null;
   selected: boolean;
   subline: string | null;
+  detail: string | null;
   onPress(): void;
   styles: ReturnType<typeof createStyles>;
 }) {
@@ -312,6 +340,7 @@ function PlanCard({
         </View>
         <Text style={[styles.planHeadline, selected && styles.planTextSelected]}>{headline}</Text>
         {subline && <Text style={[styles.planSubline, selected && styles.planSublineSelected]}>{subline}</Text>}
+        {detail && <Text style={styles.planDetail}>{detail}</Text>}
       </View>
       <View style={[styles.selection, selected && styles.selectionSelected]}>
         {selected && <Ionicons color={colors.white} name="checkmark" size={17} />}
@@ -429,6 +458,7 @@ const createStyles = (colors: SemanticColors) =>
     planSubline: { color: colors.inkSecondary, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 },
     planTextSelected: { color: colors.actionDeep },
     planSublineSelected: { color: colors.inkSecondary },
+    planDetail: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, lineHeight: 14 },
     selection: {
       alignItems: 'center',
       borderColor: colors.border,
