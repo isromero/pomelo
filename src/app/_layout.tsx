@@ -23,6 +23,7 @@ import {
 } from '@/features/account/presentation/account-provider';
 import { MomentProvider } from '@/features/moment/presentation/moment-provider';
 import { PairProvider, usePair } from '@/features/pair/presentation/pair-provider';
+import { PremiumProvider } from '@/features/premium/presentation/premium-provider';
 import { LocaleProvider, useLocale } from '@/localization/locale-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -52,13 +53,15 @@ export default function RootLayout() {
     <LocaleProvider>
       <AppearanceProvider>
         <AccountProvider>
-          <LocaleRuntime>
-            <PairRuntime>
-              <MomentRuntime>
-                <RootNavigator />
-              </MomentRuntime>
-            </PairRuntime>
-          </LocaleRuntime>
+          <PremiumProvider>
+            <LocaleRuntime>
+              <PairRuntime>
+                <MomentRuntime>
+                  <RootNavigator />
+                </MomentRuntime>
+              </PairRuntime>
+            </LocaleRuntime>
+          </PremiumProvider>
         </AccountProvider>
       </AppearanceProvider>
     </LocaleProvider>
