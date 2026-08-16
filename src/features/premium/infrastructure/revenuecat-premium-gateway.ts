@@ -1,5 +1,6 @@
 import Purchases, {
   LOG_LEVEL,
+  PACKAGE_TYPE,
   type CustomerInfo,
   type PurchasesPackage,
 } from 'react-native-purchases';
@@ -8,6 +9,7 @@ import { Platform } from 'react-native';
 import {
   PremiumError,
   type PremiumGateway,
+  type PremiumPlanId,
   type PremiumOffer,
 } from '@/features/premium/application/premium-controller';
 
@@ -40,9 +42,11 @@ function isPremium(customerInfo: CustomerInfo) {
 }
 
 function offerFromPackage(aPackage: PurchasesPackage): PremiumOffer {
+  const plan = aPackage.packageType === PACKAGE_TYPE.ANNUAL ? 'annual' : 'monthly';
   return {
     description: aPackage.product.description,
     packageId: aPackage.identifier,
+    plan,
     price: aPackage.product.priceString,
     title: aPackage.product.title,
   };
@@ -50,7 +54,7 @@ function offerFromPackage(aPackage: PurchasesPackage): PremiumOffer {
 
 export class RevenueCatPremiumGateway implements PremiumGateway {
   private configured = false;
-  private packageToPurchase: PurchasesPackage | null = null;
+  private packages = new Map<PremiumPlanId, PurchasesPackage>();
 
   async configure(userId: string) {
     const { apiKey } = config();
@@ -77,23 +81,35 @@ export class RevenueCatPremiumGateway implements PremiumGateway {
       Purchases.getCustomerInfo(),
     ]);
     const current = offerings.current;
-    this.packageToPurchase = current?.availablePackages[0] ?? null;
+    const annual = current?.annual ?? null;
+    const monthly = current?.monthly ?? null;
+    this.packages = new Map(
+      [
+        annual && annual.packageType === PACKAGE_TYPE.ANNUAL
+          ? (['annual', annual] as const)
+          : null,
+        monthly && monthly.packageType === PACKAGE_TYPE.MONTHLY
+          ? (['monthly', monthly] as const)
+          : null,
+      ].filter((entry): entry is readonly [PremiumPlanId, PurchasesPackage] => entry !== null),
+    );
 
-    if (!this.packageToPurchase) {
+    if (this.packages.size !== 2) {
       throw new PremiumError('unavailable');
     }
 
     return {
       isPremium: isPremium(customerInfo),
-      offer: offerFromPackage(this.packageToPurchase),
+      offers: Array.from(this.packages.values()).map(offerFromPackage),
     };
   }
 
-  async purchase() {
-    if (!this.packageToPurchase) {
+  async purchase(plan: PremiumPlanId) {
+    const packageToPurchase = this.packages.get(plan);
+    if (!packageToPurchase) {
       throw new PremiumError('unavailable');
     }
-    const { customerInfo } = await Purchases.purchasePackage(this.packageToPurchase);
+    const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
     return isPremium(customerInfo);
   }
 
@@ -102,7 +118,7 @@ export class RevenueCatPremiumGateway implements PremiumGateway {
   }
 
   async reset() {
-    this.packageToPurchase = null;
+    this.packages.clear();
     if (this.configured) {
       await Purchases.logOut();
       this.configured = false;

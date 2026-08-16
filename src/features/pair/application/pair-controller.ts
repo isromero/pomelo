@@ -32,8 +32,8 @@ export type PairState = {
 
 export function canBrowsePairApp(
   state: PairState | null | undefined,
-): state is PairState & { status: 'active' | 'waiting' } {
-  return state?.status === 'active' || state?.status === 'waiting';
+): state is PairState & { status: 'active' | 'archived' | 'waiting' } {
+  return state?.status === 'active' || state?.status === 'archived' || state?.status === 'waiting';
 }
 
 export type InvitationPreviewStatus =

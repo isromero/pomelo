@@ -17,6 +17,7 @@ export type MomentErrorCode =
   | 'notAllowed'
   | 'pairNotActive'
   | 'pairNotReady'
+  | 'premiumRequired'
   | 'promptUnavailable'
   | 'unexpected';
 
@@ -102,22 +103,48 @@ export class MomentController {
       this.update({ error: null, status: 'loading' });
     }
 
-    try {
-      const [moment, history] = await Promise.all([
-        this.repository.getDailyMoment(),
-        this.repository.getHistory(),
-      ]);
-      if (operation === this.operation && request === this.refreshRequest) {
-        this.update({ error: null, history, moment, status: 'ready' });
-      }
-    } catch (error) {
-      if (operation === this.operation && request === this.refreshRequest) {
-        this.update({
-          error: errorCode(error),
-          status: recovering || this.snapshot.status === 'loading' ? 'error' : 'ready',
-        });
-      }
+    const [momentResult, historyResult] = await Promise.allSettled([
+      this.repository.getDailyMoment(),
+      this.repository.getHistory(),
+    ]);
+    if (operation !== this.operation || request !== this.refreshRequest) {
+      return;
     }
+
+    if (historyResult.status === 'rejected') {
+      this.update({
+        error: errorCode(historyResult.reason),
+        status: recovering || this.snapshot.status === 'loading' ? 'error' : 'ready',
+      });
+      return;
+    }
+
+    if (momentResult.status === 'fulfilled') {
+      this.update({
+        error: null,
+        history: historyResult.value,
+        moment: momentResult.value,
+        status: 'ready',
+      });
+      return;
+    }
+
+    const dailyError = errorCode(momentResult.reason);
+    if (dailyError === 'premiumRequired' || dailyError === 'pairNotActive') {
+      this.update({
+        error: dailyError,
+        history: historyResult.value,
+        moment: null,
+        status: 'ready',
+      });
+      return;
+    }
+
+    this.update({
+      error: dailyError,
+      history: historyResult.value,
+      status: recovering || this.snapshot.status === 'loading' ? 'error' : 'ready',
+    });
   }
 
   async submitQuestion(response: QuestionResponse) {

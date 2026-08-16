@@ -27,6 +27,7 @@ const errorCodes: Record<string, MomentErrorCode> = {
   not_allowed: 'notAllowed',
   pair_not_active: 'pairNotActive',
   pair_not_ready: 'pairNotReady',
+  premium_required: 'premiumRequired',
   prompt_unavailable: 'promptUnavailable',
 };
 

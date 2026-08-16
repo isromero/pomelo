@@ -79,6 +79,7 @@ class FakeMomentRepository implements MomentRepository {
   submitCalls = 0;
   revealCalls = 0;
   revealError: MomentError | null = null;
+  dailyError: MomentError | null = null;
 
   subscribe(listener: () => void) {
     this.listener = listener;
@@ -88,6 +89,9 @@ class FakeMomentRepository implements MomentRepository {
   }
 
   async getDailyMoment() {
+    if (this.dailyError) {
+      throw this.dailyError;
+    }
     return this.moment;
   }
 
@@ -202,5 +206,21 @@ describe('MomentController', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(controller.getSnapshot().moment).toEqual(savedMoment);
+  });
+
+  it('keeps History readable when the next Moment requires Premium', async () => {
+    const repository = new FakeMomentRepository();
+    repository.history = [memory];
+    repository.dailyError = new MomentError('premiumRequired');
+    const controller = new MomentController(repository);
+
+    await controller.start();
+
+    expect(controller.getSnapshot()).toMatchObject({
+      error: 'premiumRequired',
+      history: [memory],
+      moment: null,
+      status: 'ready',
+    });
   });
 });
