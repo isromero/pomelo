@@ -795,13 +795,13 @@ function ErrorBanner({
   const { colors } = useAppearance();
   const { t } = useLocale();
   const styles = createStyles(colors);
-  if (!error) {
+  if (!error && !message) {
     return null;
   }
   return (
     <View style={styles.errorBanner}>
       <Ionicons color={colors.actionDeep} name="alert-circle" size={19} />
-      <Text style={styles.errorText}>{message ?? t(errorKeys[error])}</Text>
+      <Text style={styles.errorText}>{message ?? (error ? t(errorKeys[error]) : '')}</Text>
     </View>
   );
 }
