@@ -10,11 +10,13 @@ import { useLocale } from '@/localization/locale-provider';
 export function AppHeader({
   avatarKey,
   onAvatarPress,
+  streakCount = 0,
   showStreak = true,
 }: {
   avatarKey: AvatarKey;
   onAvatarPress(): void;
   showStreak?: boolean;
+  streakCount?: number;
 }) {
   const { colors } = useAppearance();
   const { t } = useLocale();
@@ -27,7 +29,12 @@ export function AppHeader({
         {showStreak && (
           <View style={styles.streak}>
             <Ionicons color={colors.action} name="flame" size={18} />
-            <Text style={styles.streakText}>{t('home.streak')}</Text>
+            <Text style={styles.streakText}>
+              {t(streakCount === 1 ? 'home.streak.one' : 'home.streak.many').replace(
+                '{count}',
+                String(streakCount),
+              )}
+            </Text>
           </View>
         )}
         <Pressable

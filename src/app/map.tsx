@@ -51,7 +51,7 @@ export default function MapRoute() {
 function MapContent({ pairStatus }: { pairStatus: Extract<PairStatus, 'active' | 'archived'> }) {
   const { colors } = useAppearance();
   const { profile, controller } = useAccount();
-  const { history } = useMoment();
+  const { history, moment } = useMoment();
   const premium = usePremium();
   const premiumActive = premium.access === 'premium';
   const { t } = useLocale();
@@ -65,6 +65,7 @@ function MapContent({ pairStatus }: { pairStatus: Extract<PairStatus, 'active' |
           <AppHeader
             avatarKey={profile?.avatarKey ?? 'calm'}
             onAvatarPress={() => void controller.signOut()}
+            streakCount={moment?.streak.current ?? 0}
             showStreak
           />
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

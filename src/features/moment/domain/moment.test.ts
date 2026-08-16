@@ -1,4 +1,6 @@
 import {
+  formatMomentRemaining,
+  getMomentWindow,
   isMomentReady,
   isMomentRevealed,
   validateQuestionResponse,
@@ -41,5 +43,34 @@ describe('Moment lifecycle helpers', () => {
     expect(isMomentReady({ status: 'revealed' })).toBe(false);
     expect(isMomentRevealed({ status: 'revealed' })).toBe(true);
     expect(isMomentRevealed({ status: 'ready' })).toBe(false);
+  });
+
+  it('distinguishes the normal window, recovery, expiry, and completed states', () => {
+    const now = new Date('2026-08-16T12:00:00.000Z');
+    const lifecycle = {
+      normalExpiresAt: '2026-08-16T13:00:00.000Z',
+      recoveryExpiresAt: '2026-08-17T13:00:00.000Z',
+    };
+
+    expect(getMomentWindow({ lifecycle, status: 'open' }, now)).toBe('normal');
+    expect(
+      getMomentWindow(
+        { lifecycle, status: 'partially_submitted' },
+        new Date('2026-08-16T14:00:00.000Z'),
+      ),
+    ).toBe('recovery');
+    expect(
+      getMomentWindow(
+        { lifecycle, status: 'partially_submitted' },
+        new Date('2026-08-17T14:00:00.000Z'),
+      ),
+    ).toBe('expired');
+    expect(getMomentWindow({ lifecycle, status: 'ready' }, now)).toBe('complete');
+  });
+
+  it('formats a remaining duration without hiding a zero deadline', () => {
+    expect(formatMomentRemaining(2 * 60 * 60 * 1000 + 7 * 60 * 1000)).toBe('2h 07m');
+    expect(formatMomentRemaining(45 * 1000)).toBe('1m');
+    expect(formatMomentRemaining(0)).toBe('0m');
   });
 });

@@ -5,6 +5,16 @@ import {
   type PairRepository,
   type PairState,
 } from '@/features/pair/application/pair-controller';
+import type {
+  ImportantDateInput,
+  NextImportantDate,
+} from '@/features/pair/domain/important-date';
+
+const pairDates = {
+  importantDates: [],
+  nextImportantDate: null,
+  timeZone: 'UTC',
+};
 
 const invitation = {
   code: 'ABCD-EF12',
@@ -18,10 +28,12 @@ const invitation = {
 const waitingState: PairState = {
   anniversary: '2021-06-12',
   id: 'pair-1',
+  ...pairDates,
   invitation,
   members: [
     {
       avatarKey: 'calm',
+      birthDate: '1992-11-07',
       displayName: 'Irene',
       role: 'creator',
       userId: 'user-1',
@@ -37,6 +49,7 @@ const activeState: PairState = {
     ...waitingState.members,
     {
       avatarKey: 'affectionate',
+      birthDate: '1993-12-04',
       displayName: 'Lucia',
       role: 'member',
       userId: 'user-2',
@@ -115,6 +128,22 @@ class FakePairRepository implements PairRepository {
   async dissolvePair() {
     this.state = { ...activeState, status: 'archived' };
     return this.state;
+  }
+
+  async createImportantDate(_input: ImportantDateInput) {
+    return activeState;
+  }
+
+  async updateImportantDate(_id: string, _input: ImportantDateInput) {
+    return activeState;
+  }
+
+  async deleteImportantDate(_id: string) {
+    return activeState;
+  }
+
+  async getImportantDateWidget(): Promise<NextImportantDate | null> {
+    return null;
   }
 }
 
@@ -231,6 +260,23 @@ describe('PairController', () => {
     await controller.dissolvePair();
 
     expect(controller.getSnapshot().state?.status).toBe('archived');
+  });
+
+  it('exposes the small next-date contract for widget consumers', async () => {
+    const widget: NextImportantDate = {
+      date: '2026-08-20',
+      daysRemaining: 4,
+      id: 'date-1',
+      kind: 'trip',
+      name: 'Lisbon',
+      ownerUserId: null,
+      recurrence: 'once',
+    };
+    const repository = new FakePairRepository();
+    repository.getImportantDateWidget = async () => widget;
+    const controller = new PairController(repository);
+
+    await expect(controller.getImportantDateWidget()).resolves.toEqual(widget);
   });
 
   it('does not restore Pair data after the controller stops', async () => {

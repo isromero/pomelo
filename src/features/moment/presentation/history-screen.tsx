@@ -72,7 +72,7 @@ function MemoryCard({ memory }: { memory: Memory }) {
 export function HistoryScreen() {
   const { colors } = useAppearance();
   const { controller: accountController, profile } = useAccount();
-  const { error, history, status, controller } = useMoment();
+  const { error, history, moment, status, controller } = useMoment();
   const { t } = useLocale();
   const styles = createStyles(colors);
 
@@ -82,6 +82,7 @@ export function HistoryScreen() {
         <AppHeader
           avatarKey={profile?.avatarKey ?? 'calm'}
           onAvatarPress={() => void accountController.signOut()}
+          streakCount={moment?.streak.current ?? 0}
           showStreak
         />
         <ScrollView

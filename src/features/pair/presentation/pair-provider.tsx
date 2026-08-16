@@ -32,6 +32,18 @@ const unavailableRepository: PairRepository = {
   dissolvePair: async () => {
     throw new PairError('configuration');
   },
+  createImportantDate: async () => {
+    throw new PairError('configuration');
+  },
+  updateImportantDate: async () => {
+    throw new PairError('configuration');
+  },
+  deleteImportantDate: async () => {
+    throw new PairError('configuration');
+  },
+  getImportantDateWidget: async () => {
+    throw new PairError('configuration');
+  },
   getState: async () => {
     throw new PairError('configuration');
   },

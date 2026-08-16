@@ -8,6 +8,7 @@ import {
 export type MomentErrorCode =
   | 'alreadySubmitted'
   | 'configuration'
+  | 'draftStorage'
   | 'invalidFormat'
   | 'invalidResponse'
   | 'momentClosed'
@@ -35,21 +36,37 @@ export interface MomentRepository {
   subscribe(listener: () => void): () => void;
 }
 
+export interface MomentDraftStore {
+  get(momentId: string): Promise<QuestionResponse | null>;
+  remove(momentId: string): Promise<void>;
+  save(momentId: string, response: QuestionResponse): Promise<void>;
+}
+
 type MomentControllerStatus = 'error' | 'idle' | 'loading' | 'ready';
 
 export type MomentSnapshot = {
   busy: boolean;
+  draft: QuestionResponse | null;
   error: MomentErrorCode | null;
   history: Memory[];
   moment: DailyMoment | null;
+  syncPending: boolean;
   status: MomentControllerStatus;
+};
+
+const emptyDraftStore: MomentDraftStore = {
+  get: async () => null,
+  remove: async () => {},
+  save: async () => {},
 };
 
 const initialSnapshot: MomentSnapshot = {
   busy: false,
+  draft: null,
   error: null,
   history: [],
   moment: null,
+  syncPending: false,
   status: 'idle',
 };
 
@@ -64,7 +81,10 @@ export class MomentController {
   private snapshot = initialSnapshot;
   private unsubscribeRepository: (() => void) | null = null;
 
-  constructor(private readonly repository: MomentRepository) {}
+  constructor(
+    private readonly repository: MomentRepository,
+    private readonly draftStore: MomentDraftStore = emptyDraftStore,
+  ) {}
 
   getSnapshot = () => this.snapshot;
 
@@ -120,10 +140,18 @@ export class MomentController {
     }
 
     if (momentResult.status === 'fulfilled') {
+      const draft = momentResult.value.ownContribution
+        ? null
+        : await this.readDraft(momentResult.value.id);
+      if (momentResult.value.ownContribution) {
+        void this.removePersistedDraft(momentResult.value.id);
+      }
       this.update({
+        draft,
         error: null,
         history: historyResult.value,
         moment: momentResult.value,
+        syncPending: draft !== null,
         status: 'ready',
       });
       return;
@@ -132,9 +160,11 @@ export class MomentController {
     const dailyError = errorCode(momentResult.reason);
     if (dailyError === 'premiumRequired' || dailyError === 'pairNotActive') {
       this.update({
+        draft: null,
         error: dailyError,
         history: historyResult.value,
         moment: null,
+        syncPending: false,
         status: 'ready',
       });
       return;
@@ -160,9 +190,37 @@ export class MomentController {
       return;
     }
 
-    await this.runMomentOperation(() =>
-      this.repository.submitQuestion(moment.id, response),
-    );
+    const persisted = await this.persistDraft(moment.id, response);
+    if (!persisted) {
+      this.update({ draft: response, error: 'draftStorage', syncPending: false });
+      return;
+    }
+    this.update({ draft: response, syncPending: true });
+    await this.runMomentOperation(async () => {
+      const submitted = await this.repository.submitQuestion(moment.id, response);
+      await this.removePersistedDraft(moment.id);
+      this.update({ draft: null, syncPending: false });
+      return submitted;
+    });
+  }
+
+  async saveDraft(response: QuestionResponse) {
+    const moment = this.snapshot.moment;
+    if (!moment || moment.ownContribution || moment.status === 'expired_incomplete') {
+      return;
+    }
+    const hasContent = Boolean(response.choice?.trim() || response.text?.trim());
+    if (!hasContent) {
+      await this.removePersistedDraft(moment.id);
+      this.update({ draft: null, syncPending: false });
+      return;
+    }
+    const persisted = await this.persistDraft(moment.id, response);
+    this.update({
+      draft: response,
+      error: persisted ? null : 'draftStorage',
+      syncPending: persisted,
+    });
   }
 
   async revealMoment() {
@@ -191,6 +249,31 @@ export class MomentController {
       if (operationId === this.operation) {
         this.update({ busy: false, error: errorCode(error), status: 'ready' });
       }
+    }
+  }
+
+  private async readDraft(momentId: string) {
+    try {
+      return await this.draftStore.get(momentId);
+    } catch {
+      return null;
+    }
+  }
+
+  private async persistDraft(momentId: string, response: QuestionResponse) {
+    try {
+      await this.draftStore.save(momentId, response);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async removePersistedDraft(momentId: string) {
+    try {
+      await this.draftStore.remove(momentId);
+    } catch {
+      return;
     }
   }
 

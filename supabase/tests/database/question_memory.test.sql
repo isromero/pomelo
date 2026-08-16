@@ -272,6 +272,11 @@ insert into public.moments (
   current_date - 1
 );
 
+update public.moments
+set normal_expires_at = now() + interval '1 day',
+    recovery_expires_at = now() + interval '2 days'
+where prompt_concept_key = 'weekend_choice';
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '50000000-0000-4000-8000-000000000001', true);
 insert into moment_test_results values (

@@ -11,6 +11,7 @@ import {
 } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, type SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
+import { useMoment } from '@/features/moment/presentation/moment-provider';
 import type { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 
@@ -31,6 +32,7 @@ export function EmptyAppSectionScreen({
 }) {
   const { colors } = useAppearance();
   const { controller, profile } = useAccount();
+  const { moment } = useMoment();
   const { t } = useLocale();
   const styles = createStyles(colors);
 
@@ -40,6 +42,7 @@ export function EmptyAppSectionScreen({
         <AppHeader
           avatarKey={profile?.avatarKey ?? 'calm'}
           onAvatarPress={() => void controller.signOut()}
+          streakCount={moment?.streak.current ?? 0}
           showStreak={!waitingForPartner}
         />
         <ScrollView

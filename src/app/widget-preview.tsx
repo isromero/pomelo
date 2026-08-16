@@ -20,7 +20,7 @@ export default function WidgetPreviewRoute() {
   const { colors } = useAppearance();
   const { status, profile, controller } = useAccount();
   const pair = usePair();
-  const { history } = useMoment();
+  const { history, moment } = useMoment();
   const premium = usePremium();
   const { t } = useLocale();
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -42,6 +42,7 @@ export default function WidgetPreviewRoute() {
         <AppHeader
           avatarKey={profile?.avatarKey ?? 'calm'}
           onAvatarPress={() => void controller.signOut()}
+          streakCount={moment?.streak.current ?? 0}
           showStreak={pair.state.status !== 'waiting'}
         />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

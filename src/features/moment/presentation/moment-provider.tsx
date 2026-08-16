@@ -11,8 +11,10 @@ import { AppState } from 'react-native';
 import {
   MomentController,
   MomentError,
+  type MomentDraftStore,
   type MomentRepository,
 } from '@/features/moment/application/moment-controller';
+import { LocalMomentDraftStore } from '@/features/moment/infrastructure/local-moment-draft-store';
 import { SupabaseMomentRepository } from '@/features/moment/infrastructure/supabase-moment-repository';
 import type { PomeloSupabaseClient } from '@/lib/supabase';
 
@@ -32,6 +34,12 @@ const unavailableRepository: MomentRepository = {
   subscribe: () => () => {},
 };
 
+const unavailableDraftStore: MomentDraftStore = {
+  get: async () => null,
+  remove: async () => {},
+  save: async () => {},
+};
+
 const MomentContext = createContext<MomentController | null>(null);
 
 export function MomentProvider({
@@ -43,6 +51,7 @@ export function MomentProvider({
     () =>
       new MomentController(
         client ? new SupabaseMomentRepository(client) : unavailableRepository,
+        client ? new LocalMomentDraftStore() : unavailableDraftStore,
       ),
     [client],
   );

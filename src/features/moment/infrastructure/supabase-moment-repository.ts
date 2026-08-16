@@ -12,6 +12,7 @@ import type {
   QuestionPrompt,
   QuestionResponse,
   QuestionResponseType,
+  StreakState,
 } from '@/features/moment/domain/moment';
 import type { PomeloSupabaseClient } from '@/lib/supabase';
 
@@ -41,6 +42,7 @@ const momentStatuses = new Set<MomentStatus>([
 const responseTypes = new Set<QuestionResponseType>(['choice', 'text']);
 const avatarKeys = new Set(['affectionate', 'calm', 'surprised']);
 const pomStates = new Set(['calm', 'celebrating']);
+const momentWindows = new Set(['complete', 'expired', 'normal', 'recovery']);
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -147,6 +149,36 @@ function parsePartner(value: unknown): MomentPartner {
   };
 }
 
+function parseStreak(value: unknown): StreakState {
+  if (!isObject(value)) {
+    throw new MomentError('unexpected');
+  }
+  const best = value.best;
+  const current = value.current;
+  const recoveryAvailable = value.recoveryAvailable;
+  const recoveryLimit = value.recoveryLimit;
+  const recoveryUsed = value.recoveryUsed;
+  const lastCompletedLocalDate = value.lastCompletedLocalDate;
+  if (
+    typeof best !== 'number' ||
+    typeof current !== 'number' ||
+    typeof recoveryAvailable !== 'boolean' ||
+    typeof recoveryLimit !== 'number' ||
+    typeof recoveryUsed !== 'number' ||
+    (lastCompletedLocalDate !== null && typeof lastCompletedLocalDate !== 'string')
+  ) {
+    throw new MomentError('unexpected');
+  }
+  return {
+    best,
+    current,
+    lastCompletedLocalDate,
+    recoveryAvailable,
+    recoveryLimit,
+    recoveryUsed,
+  };
+}
+
 function parseDailyMoment(value: unknown): DailyMoment {
   const error = applicationError(value);
   if (error) {
@@ -161,6 +193,9 @@ function parseDailyMoment(value: unknown): DailyMoment {
   const localDate = stringValue(value.localDate);
   const pairId = stringValue(value.pairId);
   const status = stringValue(value.status) as MomentStatus | null;
+  const normalExpiresAt = stringValue(value.normalExpiresAt);
+  const recoveryExpiresAt = stringValue(value.recoveryExpiresAt);
+  const window = stringValue(value.window);
   if (
     format !== 'question' ||
     !id ||
@@ -168,7 +203,11 @@ function parseDailyMoment(value: unknown): DailyMoment {
     !localDate ||
     !pairId ||
     !status ||
-    !momentStatuses.has(status)
+    !momentStatuses.has(status) ||
+    !normalExpiresAt ||
+    !recoveryExpiresAt ||
+    !window ||
+    !momentWindows.has(window)
   ) {
     throw new MomentError('unexpected');
   }
@@ -181,6 +220,11 @@ function parseDailyMoment(value: unknown): DailyMoment {
     format,
     id,
     isFree,
+    lifecycle: {
+      normalExpiresAt,
+      recoveryExpiresAt,
+      window: window as DailyMoment['lifecycle']['window'],
+    },
     localDate,
     memoryId: stringValue(value.memoryId),
     ownContribution: parseContribution(value.ownContribution),
@@ -188,6 +232,7 @@ function parseDailyMoment(value: unknown): DailyMoment {
     partner,
     pomState: pomState as DailyMoment['pomState'],
     prompt: parsePrompt(value.prompt),
+    streak: parseStreak(value.streak),
     status,
   };
 }
@@ -279,6 +324,11 @@ export class SupabaseMomentRepository implements MomentRepository {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'memories' },
+        listener,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pair_streaks' },
         listener,
       )
       .subscribe((status) => {
