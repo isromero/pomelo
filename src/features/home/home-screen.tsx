@@ -343,7 +343,7 @@ function PremiumNextStep({ onPress, syncing }: { onPress(): void; syncing: boole
       </Text>
       <View style={styles.premiumPromptAction}>
         <Text style={styles.premiumPromptActionText}>
-          {t(syncing ? 'premium.checkActivation' : 'premium.next.cta')}
+          {t(syncing ? 'premium.next.syncCta' : 'premium.next.cta')}
         </Text>
         <Ionicons color={colors.white} name="arrow-forward" size={18} />
       </View>

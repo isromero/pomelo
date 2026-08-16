@@ -60,9 +60,14 @@ class FakePremiumGateway implements PremiumGateway {
 
 class FakeAccessRepository implements PremiumAccessRepository {
   state = freeState;
+  syncCalls = 0;
 
   async getState() {
     return this.state;
+  }
+
+  async sync() {
+    this.syncCalls += 1;
   }
 }
 
@@ -90,6 +95,7 @@ describe('PremiumController', () => {
     await controller.purchase('monthly');
 
     expect(gateway.purchasedPlan).toBe('monthly');
+    expect(accessRepository.syncCalls).toBe(1);
     expect(controller.getSnapshot()).toMatchObject({
       access: 'free',
       busy: false,
@@ -111,6 +117,17 @@ describe('PremiumController', () => {
 
     expect(gateway.purchasedPlan).toBe('monthly');
     expect(controller.getSnapshot().access).toBe('premium');
+  });
+
+  it('automatically projects an existing store entitlement on startup', async () => {
+    const gateway = new FakePremiumGateway();
+    gateway.storeEntitled = true;
+    const accessRepository = new FakeAccessRepository();
+    const controller = new PremiumController(gateway, accessRepository);
+
+    await controller.start('user-1');
+
+    expect(accessRepository.syncCalls).toBe(1);
   });
 
   it('restores a subscription and keeps the entitlement status visible', async () => {

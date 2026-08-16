@@ -219,13 +219,6 @@ export function PremiumPaywall({
           {storeEntitled && access !== 'premium' && (
             <View style={styles.syncBox}>
               <Text style={styles.syncing}>{t('premium.purchaseSync')}</Text>
-              <Pressable
-                accessibilityRole="button"
-                disabled={busy}
-                onPress={() => void controller.refresh()}
-                style={({ pressed }) => [styles.syncAction, busy && styles.disabled, pressed && styles.pressed]}>
-                <Text style={styles.syncActionText}>{t('premium.checkActivation')}</Text>
-              </Pressable>
             </View>
           )}
           {entitlement?.status === 'cancelled' && entitlementDate && (
@@ -472,13 +465,6 @@ const createStyles = (colors: SemanticColors) =>
     error: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 17 },
     syncBox: { gap: 6 },
     syncing: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 17 },
-    syncAction: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center' },
-    syncActionText: {
-      color: colors.actionDeep,
-      fontFamily: fonts.bodyBold,
-      fontSize: 11,
-      textDecorationLine: 'underline',
-    },
     footer: {
       backgroundColor: colors.background,
       borderTopColor: colors.borderSoft,

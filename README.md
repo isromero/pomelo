@@ -46,6 +46,14 @@ After the first native build, start Metro for the installed development client w
 npm run dev
 ```
 
+For local Premium purchases, serve the Supabase Functions with the same environment as the app:
+
+```bash
+npx supabase functions serve --env-file .env.local
+```
+
+The client syncs the purchase automatically after RevenueCat confirms it. Hosted environments must set the server-only `REVENUECAT_API_KEY` secret and deploy `revenuecat-sync`; the RevenueCat webhook remains responsible for later renewals, cancellations, and expirations.
+
 Cloud development artifacts use the versioned EAS profiles:
 
 ```bash
