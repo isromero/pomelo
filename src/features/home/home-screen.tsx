@@ -188,6 +188,12 @@ export function HomeScreen({
     }
   }, []);
 
+  useEffect(() => {
+    if (premium.access === 'premium' && momentRuntime.error === 'premiumRequired') {
+      void momentRuntime.controller.refresh();
+    }
+  }, [momentRuntime.controller, momentRuntime.error, premium.access]);
+
   const revealMoment = async () => {
     await momentRuntime.controller.revealMoment();
     const revealedMoment = momentRuntime.controller.getSnapshot().moment;
