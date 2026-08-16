@@ -313,7 +313,7 @@ declare
   selected_local_date date;
   selected_moment_id uuid;
   selected_prompt public.prompt_concepts%rowtype;
-  first_moment boolean;
+  free_moment boolean;
 begin
   if current_user_id is null then
     return jsonb_build_object('error', 'not_allowed');
@@ -355,10 +355,8 @@ begin
   if selected_moment_id is null
     and exists (
       select 1
-      from public.moments
+      from public.memories
       where pair_id = selected_pair_id
-        and is_free
-        and status = 'revealed'
     )
     and not public.pair_has_premium(selected_pair_id) then
     return jsonb_build_object('error', 'premium_required');
@@ -375,9 +373,9 @@ begin
     end if;
 
     select not exists (
-      select 1 from public.moments where pair_id = selected_pair_id
+      select 1 from public.memories where pair_id = selected_pair_id
     )
-    into first_moment;
+    into free_moment;
 
     insert into public.moments (
       pair_id,
@@ -390,7 +388,7 @@ begin
       selected_prompt.concept_key,
       selected_prompt.format,
       selected_local_date,
-      first_moment
+      free_moment
     )
     on conflict (pair_id, local_date) do nothing
     returning id into selected_moment_id;

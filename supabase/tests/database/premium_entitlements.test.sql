@@ -1,6 +1,6 @@
 begin;
 
-select plan(17);
+select plan(18);
 
 select has_table('public', 'premium_subscriptions', 'Premium subscription storage exists');
 select has_table('public', 'premium_webhook_events', 'RevenueCat webhook storage exists');
@@ -63,6 +63,30 @@ select is(
   'the first Moment remains free'
 );
 
+reset role;
+update public.moments
+set local_date = local_date - 1
+where id = ((select payload ->> 'id' from premium_test_results where label = 'first'))::uuid;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', true);
+insert into premium_test_results values ('incomplete-retry', public.get_daily_moment());
+select is(
+  (select payload ->> 'isFree' from premium_test_results where label = 'incomplete-retry'),
+  'true',
+  'the free allowance remains available until the first Reveal'
+);
+
+reset role;
+update public.moments
+set local_date = local_date - 1
+where id = ((select payload ->> 'id' from premium_test_results where label = 'first'))::uuid;
+update premium_test_results
+set payload = (select payload from premium_test_results where label = 'incomplete-retry')
+where label = 'first';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', true);
 insert into premium_test_results values (
   'submitted-one',
   public.submit_question_contribution(
