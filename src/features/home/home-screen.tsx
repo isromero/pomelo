@@ -156,28 +156,49 @@ export function HomeScreen({
       ? null
       : momentRuntime.error;
   const [paywallVisible, setPaywallVisible] = useState(false);
-  const promptedMemoryIdRef = useRef<string | null>(null);
-  const currentMemoryId = momentRuntime.moment?.memoryId ?? firstMemory?.id ?? null;
+  const [paywallPending, setPaywallPending] = useState(false);
+  const paywallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (premium.access === 'premium') {
-      promptedMemoryIdRef.current = null;
-      return undefined;
-    }
     if (
-      momentRuntime.status !== 'ready' ||
+      !paywallPending ||
+      premium.access === 'premium' ||
       premium.status === 'idle' ||
-      premium.status === 'loading' ||
-      !currentMemoryId ||
-      promptedMemoryIdRef.current === currentMemoryId
+      premium.status === 'loading'
     ) {
       return undefined;
     }
 
-    promptedMemoryIdRef.current = currentMemoryId;
-    const timer = setTimeout(() => setPaywallVisible(true), 450);
-    return () => clearTimeout(timer);
-  }, [currentMemoryId, momentRuntime.status, premium.access, premium.status]);
+    paywallTimerRef.current = setTimeout(() => {
+      paywallTimerRef.current = null;
+      setPaywallPending(false);
+      setPaywallVisible(true);
+    }, 450);
+    return () => {
+      if (paywallTimerRef.current) {
+        clearTimeout(paywallTimerRef.current);
+        paywallTimerRef.current = null;
+      }
+    };
+  }, [paywallPending, premium.access, premium.status]);
+
+  useEffect(() => () => {
+    if (paywallTimerRef.current) {
+      clearTimeout(paywallTimerRef.current);
+    }
+  }, []);
+
+  const revealMoment = async () => {
+    await momentRuntime.controller.revealMoment();
+    const revealedMoment = momentRuntime.controller.getSnapshot().moment;
+    if (
+      premium.access !== 'premium' &&
+      revealedMoment?.status === 'revealed' &&
+      revealedMoment.memoryId
+    ) {
+      setPaywallPending(true);
+    }
+  };
 
   const currentMomentState = momentState(displayMoment);
   const copy = waitingForPartner ? waitingHeroCopy : heroCopy[currentMomentState];
@@ -252,7 +273,7 @@ export function HomeScreen({
                 moment={displayMoment}
                 onPhotoDraftChange={(draft) => void momentRuntime.controller.savePhotoDraft(draft)}
                 onPhotoSubmit={() => void momentRuntime.controller.submitPhoto()}
-                onReveal={() => void momentRuntime.controller.revealMoment()}
+                onReveal={() => void revealMoment()}
                 onDraftChange={(draft) => void momentRuntime.controller.saveDraft(draft)}
                 onSubmit={(response) => void momentRuntime.controller.submitQuestion(response)}
                 doodle={doodle}
