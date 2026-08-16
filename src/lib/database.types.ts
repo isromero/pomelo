@@ -13,6 +13,13 @@ export type Database = {
         Row: {
           id: string
           moment_id: string
+          photo_front_height: number | null
+          photo_front_path: string | null
+          photo_front_width: number | null
+          photo_rear_height: number | null
+          photo_rear_path: string | null
+          photo_rear_width: number | null
+          photo_submission_id: string | null
           response_choice: string | null
           response_text: string | null
           submitted_at: string
@@ -21,6 +28,13 @@ export type Database = {
         Insert: {
           id?: string
           moment_id: string
+          photo_front_height?: number | null
+          photo_front_path?: string | null
+          photo_front_width?: number | null
+          photo_rear_height?: number | null
+          photo_rear_path?: string | null
+          photo_rear_width?: number | null
+          photo_submission_id?: string | null
           response_choice?: string | null
           response_text?: string | null
           submitted_at?: string
@@ -29,6 +43,13 @@ export type Database = {
         Update: {
           id?: string
           moment_id?: string
+          photo_front_height?: number | null
+          photo_front_path?: string | null
+          photo_front_width?: number | null
+          photo_rear_height?: number | null
+          photo_rear_path?: string | null
+          photo_rear_width?: number | null
+          photo_submission_id?: string | null
           response_choice?: string | null
           response_text?: string | null
           submitted_at?: string
@@ -37,6 +58,109 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "contributions_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doodle_completions: {
+        Row: {
+          client_completion_id: string
+          completed_at: string
+          moment_id: string
+          user_id: string
+        }
+        Insert: {
+          client_completion_id: string
+          completed_at?: string
+          moment_id: string
+          user_id: string
+        }
+        Update: {
+          client_completion_id?: string
+          completed_at?: string
+          moment_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doodle_completions_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doodle_documents: {
+        Row: {
+          created_at: string
+          document: Json
+          id: string
+          moment_id: string
+          pair_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          document?: Json
+          id?: string
+          moment_id: string
+          pair_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          document?: Json
+          id?: string
+          moment_id?: string
+          pair_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doodle_documents_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: true
+            referencedRelation: "moments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doodle_documents_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doodle_snapshot_operations: {
+        Row: {
+          client_operation_id: string
+          created_at: string
+          moment_id: string
+          user_id: string
+        }
+        Insert: {
+          client_operation_id: string
+          created_at?: string
+          moment_id: string
+          user_id: string
+        }
+        Update: {
+          client_operation_id?: string
+          created_at?: string
+          moment_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doodle_snapshot_operations_moment_id_fkey"
             columns: ["moment_id"]
             isOneToOne: false
             referencedRelation: "moments"
@@ -91,10 +215,13 @@ export type Database = {
       memories: {
         Row: {
           created_at: string
+          doodle_document: Json | null
+          format: string
           id: string
           local_date: string
           moment_id: string
           pair_id: string
+          photo_composition: Json
           pom_state: string
           prompt_concept_key: string
           prompt_en: string
@@ -105,10 +232,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          doodle_document?: Json | null
+          format?: string
           id?: string
           local_date: string
           moment_id: string
           pair_id: string
+          photo_composition?: Json
           pom_state?: string
           prompt_concept_key: string
           prompt_en: string
@@ -119,10 +249,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          doodle_document?: Json | null
+          format?: string
           id?: string
           local_date?: string
           moment_id?: string
           pair_id?: string
+          photo_composition?: Json
           pom_state?: string
           prompt_concept_key?: string
           prompt_en?: string
@@ -152,6 +285,35 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "prompt_concepts"
             referencedColumns: ["concept_key"]
+          },
+        ]
+      }
+      memory_widget_preferences: {
+        Row: {
+          memory_id: string
+          updated_at: string
+          user_id: string
+          visual_enabled: boolean
+        }
+        Insert: {
+          memory_id: string
+          updated_at?: string
+          user_id: string
+          visual_enabled?: boolean
+        }
+        Update: {
+          memory_id?: string
+          updated_at?: string
+          user_id?: string
+          visual_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_widget_preferences_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -536,6 +698,103 @@ export type Database = {
           },
         ]
       }
+      thread_message_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_type: string
+          id: string
+          memory_id: string
+          message_id: string
+          pair_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          memory_id: string
+          message_id: string
+          pair_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          memory_id?: string
+          message_id?: string
+          pair_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_message_events_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_message_events_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "thread_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_message_events_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_messages: {
+        Row: {
+          body: string
+          client_message_id: string
+          created_at: string
+          id: string
+          memory_id: string
+          pair_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          client_message_id: string
+          created_at?: string
+          id?: string
+          memory_id: string
+          pair_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          client_message_id?: string
+          created_at?: string
+          id?: string
+          memory_id?: string
+          pair_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_messages_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_messages_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -546,6 +805,10 @@ export type Database = {
         Returns: Json
       }
       cancel_pair_invitation: { Args: { invitation_id: string }; Returns: Json }
+      complete_doodle: {
+        Args: { client_completion_id: string; target_moment_id: string }
+        Returns: Json
+      }
       contribution_payload: {
         Args: {
           target_contribution: Database["public"]["Tables"]["contributions"]["Row"]
@@ -573,8 +836,10 @@ export type Database = {
       delete_important_date: { Args: { target_date_id: string }; Returns: Json }
       dissolve_pair: { Args: never; Returns: Json }
       get_daily_moment: { Args: never; Returns: Json }
+      get_doodle_session: { Args: { target_moment_id: string }; Returns: Json }
       get_important_date_widget: { Args: never; Returns: Json }
       get_memory_history: { Args: never; Returns: Json }
+      get_memory_thread: { Args: { target_memory_id: string }; Returns: Json }
       get_pair_state: { Args: never; Returns: Json }
       get_premium_state: { Args: never; Returns: Json }
       important_date_for_year: {
@@ -594,6 +859,10 @@ export type Database = {
       list_memories: { Args: never; Returns: Json }
       memory_payload_for_user: {
         Args: { target_memory_id: string; target_user_id: string }
+        Returns: Json
+      }
+      merge_doodle_documents: {
+        Args: { current_document: Json; incoming_document: Json }
         Returns: Json
       }
       moment_deadlines_for_pair: {
@@ -642,11 +911,50 @@ export type Database = {
         Returns: undefined
       }
       reveal_moment: { Args: { target_moment_id: string }; Returns: Json }
+      save_doodle_snapshot: {
+        Args: {
+          client_operation_id: string
+          target_document: Json
+          target_moment_id: string
+        }
+        Returns: Json
+      }
+      send_thread_message: {
+        Args: {
+          message_body: string
+          target_client_message_id: string
+          target_memory_id: string
+        }
+        Returns: Json
+      }
+      set_memory_widget_visibility: {
+        Args: { enabled: boolean; target_memory_id: string }
+        Returns: boolean
+      }
+      submit_photo_contribution: {
+        Args: {
+          client_submission_id: string
+          front_height: number
+          front_path: string
+          front_width: number
+          rear_height: number
+          rear_path: string
+          rear_width: number
+          target_moment_id: string
+        }
+        Returns: Json
+      }
       submit_question_contribution: {
         Args: {
           response_choice?: string
           response_text?: string
           target_moment_id: string
+        }
+        Returns: Json
+      }
+      thread_message_payload: {
+        Args: {
+          target_message: Database["public"]["Tables"]["thread_messages"]["Row"]
         }
         Returns: Json
       }

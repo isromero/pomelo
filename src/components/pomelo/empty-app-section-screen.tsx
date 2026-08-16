@@ -11,7 +11,7 @@ import {
 } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, type SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { useMoment } from '@/features/moment/presentation/moment-provider';
+import { useMoment } from '@/features/moment/moment-api';
 import type { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 

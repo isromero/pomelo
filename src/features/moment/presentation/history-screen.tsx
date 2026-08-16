@@ -1,15 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Polyline } from 'react-native-svg';
 
 import { useAppearance } from '@/appearance/appearance-provider';
 import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, type SemanticColors } from '@/constants/pomelo-theme';
 import type { MomentErrorCode } from '@/features/moment/application/moment-controller';
-import type { Contribution, Memory } from '@/features/moment/domain/moment';
-import { useMoment } from '@/features/moment/presentation/moment-provider';
+import type { Contribution, DoodleDocument, Memory } from '@/features/moment/domain/moment';
+import { useMoment, useThreadController } from '@/features/moment/presentation/moment-provider';
+import { ThreadPanel } from '@/features/moment/presentation/thread-panel';
 import { useAccount } from '@/features/account/presentation/account-provider';
 import type { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
@@ -31,7 +34,138 @@ function errorKey(error: MomentErrorCode | null): TranslationKey {
   return error === 'network' ? 'moment.error.network' : 'moment.error.unexpected';
 }
 
-function MemoryCard({ memory }: { memory: Memory }) {
+function formatKey(memory: Memory) {
+  if (memory.format === 'photo') {
+    return 'moment.kind.photo' as const;
+  }
+  if (memory.format === 'doodle') {
+    return 'moment.kind.doodle' as const;
+  }
+  return 'moment.kind.question' as const;
+}
+
+function DoodleMemoryPreview({
+  colors,
+  document,
+}: {
+  colors: SemanticColors;
+  document: DoodleDocument;
+}) {
+  const styles = createStyles(colors);
+  return (
+    <View style={styles.doodlePreview}>
+      <Svg height="100%" viewBox="0 0 320 380" width="100%">
+        {document.strokes.map((stroke) => (
+          <Polyline
+            fill="none"
+            key={stroke.id}
+            opacity={0.85}
+            points={stroke.points.map((point) => `${point.x},${point.y}`).join(' ')}
+            stroke={stroke.mode === 'eraser' ? colors.backgroundRaised : stroke.color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={stroke.width}
+          />
+        ))}
+      </Svg>
+    </View>
+  );
+}
+
+function PhotoMemoryPreview({
+  controller,
+  memory,
+}: {
+  controller: ReturnType<typeof useMoment>['controller'];
+  memory: Memory;
+}) {
+  const { colors } = useAppearance();
+  const styles = createStyles(colors);
+  const ownPhoto = memory.ownContribution?.photo ?? null;
+  const partnerPhoto = memory.partner.contribution?.photo ?? null;
+  const [urls, setUrls] = useState<{
+    ownFront: string | null;
+    ownRear: string | null;
+    partnerFront: string | null;
+    partnerRear: string | null;
+  }>({
+    ownFront: null,
+    ownRear: null,
+    partnerFront: null,
+    partnerRear: null,
+  });
+
+  useEffect(() => {
+    let active = true;
+    const ownFrontPath = ownPhoto?.front.path ?? null;
+    const ownRearPath = ownPhoto?.rear.path ?? null;
+    const partnerFrontPath = partnerPhoto?.front.path ?? null;
+    const partnerRearPath = partnerPhoto?.rear.path ?? null;
+    void Promise.all([
+      ownFrontPath ? controller.createPrivateMediaUrl(ownFrontPath) : Promise.resolve(null),
+      ownRearPath ? controller.createPrivateMediaUrl(ownRearPath) : Promise.resolve(null),
+      partnerFrontPath ? controller.createPrivateMediaUrl(partnerFrontPath) : Promise.resolve(null),
+      partnerRearPath ? controller.createPrivateMediaUrl(partnerRearPath) : Promise.resolve(null),
+    ]).then(([ownFront, ownRear, partnerFront, partnerRear]) => {
+      if (active) {
+        setUrls({ ownFront, ownRear, partnerFront, partnerRear });
+      }
+    }).catch(() => {
+      if (active) {
+        setUrls({ ownFront: null, ownRear: null, partnerFront: null, partnerRear: null });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    controller,
+    ownPhoto?.front.path,
+    ownPhoto?.rear.path,
+    partnerPhoto?.front.path,
+    partnerPhoto?.rear.path,
+  ]);
+
+  if (!ownPhoto || !partnerPhoto) {
+    return (
+      <View style={styles.photoPlaceholder}>
+        <Ionicons color={colors.muted} name="images-outline" size={24} />
+      </View>
+    );
+  }
+  return (
+    <View style={styles.photoComposition}>
+      <View style={styles.photoPrimary}>
+        {urls.partnerRear ? (
+          <Image resizeMode="cover" source={{ uri: urls.partnerRear }} style={styles.photoImage} />
+        ) : null}
+        {urls.partnerFront ? (
+          <Image resizeMode="cover" source={{ uri: urls.partnerFront }} style={styles.photoPartnerFront} />
+        ) : null}
+      </View>
+      <View style={styles.photoThumbnail}>
+        {urls.ownRear ? <Image resizeMode="cover" source={{ uri: urls.ownRear }} style={styles.photoImage} /> : null}
+        {urls.ownFront ? <Image resizeMode="cover" source={{ uri: urls.ownFront }} style={styles.photoOwnFront} /> : null}
+      </View>
+    </View>
+  );
+}
+
+function MemoryCard({
+  controller,
+  memory,
+  ownUserId,
+  onToggleThread,
+  threadController,
+  threadOpen,
+}: {
+  controller: ReturnType<typeof useMoment>['controller'];
+  memory: Memory;
+  ownUserId: string;
+  onToggleThread(): void;
+  threadController: ReturnType<typeof useThreadController>;
+  threadOpen: boolean;
+}) {
   const { colors } = useAppearance();
   const { locale, t } = useLocale();
   const styles = createStyles(colors);
@@ -44,27 +178,54 @@ function MemoryCard({ memory }: { memory: Memory }) {
           <Text style={styles.pomText}>{t('history.pom')}</Text>
         </View>
       </View>
-      <Text style={styles.prompt}>{memory.prompt.text}</Text>
-      <View style={styles.conversation}>
-        <View style={styles.bubbleRow}>
-          <View style={[styles.conversationBubble, styles.partnerBubble]}>
-            <Text style={styles.sender}>{memory.partner.displayName}</Text>
-            <Text style={styles.conversationText}>
-              {memory.partner.contribution
-                ? contributionText(memory.partner.contribution)
-                : t('history.missingContribution')}
-            </Text>
-          </View>
-        </View>
-        <View style={[styles.bubbleRow, styles.ownRow]}>
-          <View style={[styles.conversationBubble, styles.ownBubble]}>
-            <Text style={styles.sender}>{t('moment.you')}</Text>
-            <Text style={styles.conversationText}>
-              {contributionText(memory.ownContribution)}
-            </Text>
-          </View>
-        </View>
+      <View style={styles.formatPill}>
+        <Text style={styles.formatText}>{t(formatKey(memory))}</Text>
       </View>
+      <Text style={styles.prompt}>{memory.prompt.text}</Text>
+      {memory.format === 'photo' ? <PhotoMemoryPreview controller={controller} memory={memory} /> : null}
+      {memory.format === 'doodle' && memory.doodleDocument ? (
+        <DoodleMemoryPreview colors={colors} document={memory.doodleDocument} />
+      ) : null}
+      {(!memory.format || memory.format === 'question') && memory.ownContribution ? (
+        <View style={styles.conversation}>
+          <View style={styles.bubbleRow}>
+            <View style={[styles.conversationBubble, styles.partnerBubble]}>
+              <Text style={styles.sender}>{memory.partner.displayName}</Text>
+              <Text style={styles.conversationText}>
+                {memory.partner.contribution
+                  ? contributionText(memory.partner.contribution)
+                  : t('history.missingContribution')}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.bubbleRow, styles.ownRow]}>
+            <View style={[styles.conversationBubble, styles.ownBubble]}>
+              <Text style={styles.sender}>{t('moment.you')}</Text>
+              <Text style={styles.conversationText}>{contributionText(memory.ownContribution)}</Text>
+            </View>
+          </View>
+        </View>
+      ) : null}
+      {memory.format === 'photo' ? (
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityState={{ checked: memory.widgetVisualEnabled === true }}
+          onPress={() => void controller.setMemoryWidgetVisibility(memory.id, memory.widgetVisualEnabled !== true)}
+          style={styles.widgetToggle}>
+          <Ionicons color={colors.actionDeep} name={memory.widgetVisualEnabled ? 'eye-outline' : 'eye-off-outline'} size={16} />
+          <Text style={styles.widgetToggleText}>
+            {memory.widgetVisualEnabled ? t('history.widgetVisible') : t('history.widgetHidden')}
+          </Text>
+        </Pressable>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        onPress={onToggleThread}
+        style={styles.threadButton}>
+        <Ionicons color={colors.actionDeep} name="chatbubble-ellipses-outline" size={16} />
+        <Text style={styles.threadButtonText}>{threadOpen ? t('thread.close') : t('thread.open')}</Text>
+      </Pressable>
+      {threadOpen ? <ThreadPanel controller={threadController} memoryId={memory.id} ownUserId={ownUserId} /> : null}
     </View>
   );
 }
@@ -73,8 +234,10 @@ export function HistoryScreen() {
   const { colors } = useAppearance();
   const { controller: accountController, profile } = useAccount();
   const { error, history, moment, status, controller } = useMoment();
+  const threadController = useThreadController();
   const { t } = useLocale();
   const styles = createStyles(colors);
+  const [openThreadId, setOpenThreadId] = useState<string | null>(null);
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
@@ -123,7 +286,19 @@ export function HistoryScreen() {
               </Pressable>
             </View>
           ) : (
-            history.map((memory) => <MemoryCard key={memory.id} memory={memory} />)
+            history.map((memory) => (
+              <MemoryCard
+                controller={controller}
+                key={memory.id}
+                memory={memory}
+                ownUserId={profile?.userId ?? ''}
+                onToggleThread={() =>
+                  setOpenThreadId((current) => (current === memory.id ? null : memory.id))
+                }
+                threadController={threadController}
+                threadOpen={openThreadId === memory.id}
+              />
+            ))
           )}
         </ScrollView>
         <BottomNavigation activeTab="history" />
@@ -184,6 +359,8 @@ const createStyles = (colors: SemanticColors) =>
       paddingHorizontal: 10,
     },
     pomText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 9 },
+    formatPill: { alignSelf: 'flex-start', backgroundColor: colors.actionSoft, borderRadius: radii.full, paddingHorizontal: 9, paddingVertical: 5 },
+    formatText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 0.3 },
     prompt: {
       color: colors.ink,
       fontFamily: fonts.displayBold,
@@ -210,6 +387,18 @@ const createStyles = (colors: SemanticColors) =>
       textTransform: 'uppercase',
     },
     conversationText: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
+    photoComposition: { aspectRatio: 1.3, flexDirection: 'row', gap: 8 },
+    photoPrimary: { backgroundColor: colors.backgroundRaised, borderRadius: 18, flex: 1, overflow: 'hidden' },
+    photoThumbnail: { alignSelf: 'flex-end', backgroundColor: colors.backgroundRaised, borderColor: colors.surface, borderRadius: 13, borderWidth: 3, bottom: 8, height: 72, overflow: 'hidden', position: 'absolute', right: 8, width: 58 },
+    photoImage: { height: '100%', width: '100%' },
+    photoOwnFront: { borderColor: colors.surface, borderRadius: 5, borderWidth: 1, bottom: 3, height: 30, position: 'absolute', right: 3, width: 24 },
+    photoPartnerFront: { borderColor: colors.surface, borderRadius: 9, borderWidth: 2, bottom: 9, height: 82, position: 'absolute', right: 9, width: 64 },
+    photoPlaceholder: { alignItems: 'center', aspectRatio: 1.3, backgroundColor: colors.backgroundRaised, borderRadius: 18, justifyContent: 'center' },
+    doodlePreview: { aspectRatio: 320 / 380, backgroundColor: colors.backgroundRaised, borderRadius: 18, overflow: 'hidden', padding: 8 },
+    widgetToggle: { alignItems: 'center', flexDirection: 'row', gap: 7 },
+    widgetToggleText: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 10 },
+    threadButton: { alignItems: 'center', flexDirection: 'row', gap: 7, paddingVertical: 3 },
+    threadButtonText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 11 },
     emptyCard: {
       backgroundColor: colors.surface,
       borderColor: colors.borderSoft,

@@ -24,7 +24,7 @@ import {
   type Memory,
 } from '@/features/moment/domain/moment';
 import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
-import { useMoment } from '@/features/moment/presentation/moment-provider';
+import { useDoodleMoment, useMoment } from '@/features/moment/moment-api';
 import type { PairStatus } from '@/features/pair/application/pair-controller';
 import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
@@ -73,7 +73,9 @@ const waitingHeroCopy = {
 
 function momentState(moment: DailyMoment | null): MomentState {
   if (!moment || moment.status === 'open' || moment.status === 'partially_submitted') {
-    return moment?.ownContribution ? 'waiting' : 'answer';
+    return moment?.ownContribution || (moment?.format === 'doodle' && moment.doodle?.ownCompleted)
+      ? 'waiting'
+      : 'answer';
   }
   if (moment.status === 'ready') {
     return 'ready';
@@ -83,7 +85,7 @@ function momentState(moment: DailyMoment | null): MomentState {
 
 function dailyMomentFromMemory(memory: Memory): DailyMoment {
   return {
-    format: 'question',
+    format: memory.format ?? 'question',
     id: memory.momentId,
     isFree: true,
     lifecycle: {
@@ -98,6 +100,13 @@ function dailyMomentFromMemory(memory: Memory): DailyMoment {
     partner: memory.partner,
     pomState: memory.pomState,
     prompt: memory.prompt,
+    doodle: memory.doodleDocument
+      ? {
+          document: memory.doodleDocument,
+          ownCompleted: true,
+          partnerCompleted: true,
+        }
+      : null,
     streak: initialStreakState,
     status: 'revealed',
   };
@@ -136,6 +145,7 @@ export function HomeScreen({
   const { controller, profile } = useAccount();
   const { locale, t } = useLocale();
   const momentRuntime = useMoment();
+  const { controller: doodleController, snapshot: doodle } = useDoodleMoment();
   const premium = usePremium();
   const styles = createStyles(colors);
   const waitingForPartner = pairStatus === 'waiting';
@@ -240,9 +250,14 @@ export function HomeScreen({
                 error={displayError}
                 key={displayMoment.id}
                 moment={displayMoment}
+                onPhotoDraftChange={(draft) => void momentRuntime.controller.savePhotoDraft(draft)}
+                onPhotoSubmit={() => void momentRuntime.controller.submitPhoto()}
                 onReveal={() => void momentRuntime.controller.revealMoment()}
                 onDraftChange={(draft) => void momentRuntime.controller.saveDraft(draft)}
                 onSubmit={(response) => void momentRuntime.controller.submitQuestion(response)}
+                doodle={doodle}
+                doodleController={doodleController}
+                photoDraft={momentRuntime.photoDraft}
                 syncPending={momentRuntime.syncPending}
               />
             )}

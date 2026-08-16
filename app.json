@@ -25,8 +25,28 @@
       "output": "static",
       "favicon": "./assets/images/app-icon.png"
     },
+    "locales": {
+      "en": {
+        "ios": {
+          "NSCameraUsageDescription": "Pomelo uses your camera to create a Photo Moment."
+        }
+      },
+      "es": {
+        "ios": {
+          "NSCameraUsageDescription": "Pomelo usa la cámara para crear vuestro Photo Moment."
+        }
+      }
+    },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pomelo usa la cámara para crear vuestro Photo Moment.",
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-image-picker",
       [
         "expo-splash-screen",
         {

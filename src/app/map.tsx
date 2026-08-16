@@ -2,7 +2,7 @@ import { Redirect } from 'expo-router';
 
 import { EmptyAppSectionScreen } from '@/components/pomelo/empty-app-section-screen';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { useMoment } from '@/features/moment/presentation/moment-provider';
+import { useMoment } from '@/features/moment/moment-api';
 import { PremiumLockedSurface } from '@/features/premium/presentation/premium-locked-surface';
 import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
 import { usePremium } from '@/features/premium/presentation/premium-provider';

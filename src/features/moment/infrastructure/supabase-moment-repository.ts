@@ -3,24 +3,42 @@ import {
   type MomentErrorCode,
   type MomentRepository,
 } from '@/features/moment/application/moment-controller';
+import {
+  ThreadError,
+  type ThreadRepository,
+} from '@/features/moment/application/thread-controller';
 import type {
   Contribution,
   DailyMoment,
+  DoodleDocument,
   Memory,
+  MomentFormat,
+  MomentPrompt,
   MomentPartner,
   MomentStatus,
-  QuestionPrompt,
+  PhotoAsset,
+  PhotoComposition,
+  PhotoContribution,
+  PhotoDraft,
   QuestionResponse,
   QuestionResponseType,
   StreakState,
 } from '@/features/moment/domain/moment';
+import { isDoodleDocument } from '@/features/moment/domain/moment';
+import type { ThreadMessage, ThreadState } from '@/features/moment/domain/thread';
 import type { PomeloSupabaseClient } from '@/lib/supabase';
 
 type JsonObject = Record<string, unknown>;
 
+export const MOMENT_MEDIA_BUCKET = 'pomelo-moment-media';
+
 const errorCodes: Record<string, MomentErrorCode> = {
   already_submitted: 'alreadySubmitted',
+  archive_read_only: 'notAllowed',
+  doodle_not_ready: 'momentNotReady',
+  invalid_doodle: 'invalidResponse',
   invalid_format: 'invalidFormat',
+  invalid_message: 'invalidResponse',
   invalid_response: 'invalidResponse',
   moment_closed: 'momentClosed',
   moment_not_found: 'momentNotFound',
@@ -29,6 +47,7 @@ const errorCodes: Record<string, MomentErrorCode> = {
   pair_not_active: 'pairNotActive',
   pair_not_ready: 'pairNotReady',
   premium_required: 'premiumRequired',
+  photo_incomplete: 'photoIncomplete',
   prompt_unavailable: 'promptUnavailable',
 };
 
@@ -40,6 +59,7 @@ const momentStatuses = new Set<MomentStatus>([
   'revealed',
 ]);
 const responseTypes = new Set<QuestionResponseType>(['choice', 'text']);
+const momentFormats = new Set<MomentFormat>(['question', 'photo', 'doodle']);
 const avatarKeys = new Set(['affectionate', 'calm', 'surprised']);
 const pomStates = new Set(['calm', 'celebrating']);
 const momentWindows = new Set(['complete', 'expired', 'normal', 'recovery']);
@@ -80,14 +100,20 @@ function repositoryError(error: { message?: string } | null) {
   );
 }
 
-function parsePrompt(value: unknown): QuestionPrompt {
+function parsePrompt(value: unknown, format: MomentFormat): MomentPrompt {
   if (!isObject(value)) {
     throw new MomentError('unexpected');
   }
   const conceptKey = stringValue(value.conceptKey);
   const text = stringValue(value.text);
+  if (!conceptKey || !text) {
+    throw new MomentError('unexpected');
+  }
+  if (format !== 'question') {
+    return { conceptKey, text };
+  }
   const responseType = stringValue(value.responseType) as QuestionResponseType | null;
-  if (!conceptKey || !text || !responseType || !responseTypes.has(responseType)) {
+  if (!responseType || !responseTypes.has(responseType)) {
     throw new MomentError('unexpected');
   }
   if (!Array.isArray(value.options) || !value.options.every((option) => typeof option === 'string')) {
@@ -99,6 +125,64 @@ function parsePrompt(value: unknown): QuestionPrompt {
     responseType,
     text,
   };
+}
+
+function parsePhotoAsset(value: unknown): PhotoAsset {
+  if (!isObject(value)) {
+    throw new MomentError('unexpected');
+  }
+  const height = value.height;
+  const mimeType = stringValue(value.mimeType);
+  const path = stringValue(value.path);
+  const width = value.width;
+  if (
+    typeof height !== 'number' ||
+    !mimeType ||
+    !path ||
+    typeof width !== 'number' ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    throw new MomentError('unexpected');
+  }
+  return { height, mimeType, path, width };
+}
+
+function parsePhotoContribution(value: unknown): PhotoContribution | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (!isObject(value)) {
+    throw new MomentError('unexpected');
+  }
+  return {
+    front: parsePhotoAsset(value.front),
+    rear: parsePhotoAsset(value.rear),
+  };
+}
+
+function parseDoodleDocument(value: unknown): DoodleDocument | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (!isDoodleDocument(value)) {
+    throw new MomentError('unexpected');
+  }
+  return value;
+}
+
+function parsePhotoComposition(value: unknown): PhotoComposition | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (
+    !isObject(value) ||
+    value.layout !== 'partner_rear_primary_own_rear_thumbnail' ||
+    value.version !== 1
+  ) {
+    throw new MomentError('unexpected');
+  }
+  return value as PhotoComposition;
 }
 
 function parseContribution(value: unknown): Contribution | null {
@@ -116,6 +200,7 @@ function parseContribution(value: unknown): Contribution | null {
   }
   return {
     id,
+    photo: parsePhotoContribution(value.photo),
     responseChoice: nullableString(value.responseChoice),
     responseText: nullableString(value.responseText),
     submittedAt,
@@ -187,7 +272,7 @@ function parseDailyMoment(value: unknown): DailyMoment {
   if (!isObject(value)) {
     throw new MomentError('unexpected');
   }
-  const format = stringValue(value.format);
+  const format = stringValue(value.format) as MomentFormat | null;
   const id = stringValue(value.id);
   const isFree = booleanValue(value.isFree);
   const localDate = stringValue(value.localDate);
@@ -197,7 +282,8 @@ function parseDailyMoment(value: unknown): DailyMoment {
   const recoveryExpiresAt = stringValue(value.recoveryExpiresAt);
   const window = stringValue(value.window);
   if (
-    format !== 'question' ||
+    !format ||
+    !momentFormats.has(format) ||
     !id ||
     isFree === null ||
     !localDate ||
@@ -216,6 +302,15 @@ function parseDailyMoment(value: unknown): DailyMoment {
     throw new MomentError('unexpected');
   }
   const partner = parsePartner(value.partner);
+  const doodle = value.doodle === null || value.doodle === undefined
+    ? null
+    : isObject(value.doodle)
+      ? {
+          document: parseDoodleDocument(value.doodle.document) ?? { strokes: [], version: 0 },
+          ownCompleted: Boolean(value.doodle.ownCompleted),
+          partnerCompleted: Boolean(value.doodle.partnerCompleted),
+        }
+      : null;
   return {
     format,
     id,
@@ -231,9 +326,10 @@ function parseDailyMoment(value: unknown): DailyMoment {
     pairId,
     partner,
     pomState: pomState as DailyMoment['pomState'],
-    prompt: parsePrompt(value.prompt),
+    prompt: parsePrompt(value.prompt, format),
     streak: parseStreak(value.streak),
     status,
+    doodle,
   };
 }
 
@@ -249,18 +345,20 @@ function parseMemory(value: unknown): Memory {
   const localDate = stringValue(value.localDate);
   const momentId = stringValue(value.momentId);
   const pairId = stringValue(value.pairId);
+  const format = stringValue(value.format) as MomentFormat | null;
   const pomState = stringValue(value.pomState);
   const revealedAt = stringValue(value.revealedAt);
   const ownContribution = parseContribution(value.ownContribution);
   if (
     !id ||
+    !format ||
+    !momentFormats.has(format) ||
     !localDate ||
     !momentId ||
     !pairId ||
     !pomState ||
     !pomStates.has(pomState) ||
-    !revealedAt ||
-    !ownContribution
+    !revealedAt
   ) {
     throw new MomentError('unexpected');
   }
@@ -272,12 +370,16 @@ function parseMemory(value: unknown): Memory {
     pairId,
     partner: parsePartner(value.partner),
     pomState: pomState as Memory['pomState'],
-    prompt: parsePrompt(value.prompt),
+    prompt: parsePrompt(value.prompt, format),
     revealedAt,
+    format,
+    doodleDocument: parseDoodleDocument(value.doodleDocument),
+    photoComposition: parsePhotoComposition(value.photoComposition),
+    widgetVisualEnabled: Boolean(value.widgetVisualEnabled),
   };
 }
 
-export class SupabaseMomentRepository implements MomentRepository {
+export class SupabaseMomentRepository implements MomentRepository, ThreadRepository {
   constructor(private readonly client: PomeloSupabaseClient) {}
 
   async getDailyMoment() {
@@ -306,11 +408,127 @@ export class SupabaseMomentRepository implements MomentRepository {
     return this.momentResult(data, error);
   }
 
+  async submitPhoto(momentId: string, draft: PhotoDraft, submissionKey: string) {
+    const { data: userResult, error: userError } = await this.client.auth.getUser();
+    if (userError || !userResult.user || !draft.rear || !draft.front) {
+      throw new MomentError(userError ? 'network' : 'photoIncomplete');
+    }
+    const basePath = `${userResult.user.id}/${momentId}`;
+    const rearPath = `${basePath}/rear.jpg`;
+    const frontPath = `${basePath}/front.jpg`;
+    const uploads = await Promise.allSettled([
+      this.uploadPhoto(rearPath, draft.rear),
+      this.uploadPhoto(frontPath, draft.front),
+    ]);
+    if (uploads.some((result) => result.status === 'rejected')) {
+      await this.removeUploadedPhotos([rearPath, frontPath]);
+      throw new MomentError('network');
+    }
+    const { data, error } = await this.client.rpc('submit_photo_contribution', {
+      client_submission_id: submissionKey,
+      front_height: draft.front.height,
+      front_path: frontPath,
+      front_width: draft.front.width,
+      rear_height: draft.rear.height,
+      rear_path: rearPath,
+      rear_width: draft.rear.width,
+      target_moment_id: momentId,
+    });
+    if (isObject(data) && data.error) {
+      await this.removeUploadedPhotos([rearPath, frontPath]);
+    }
+    return this.momentResult(data, error);
+  }
+
   async revealMoment(momentId: string) {
     const { data, error } = await this.client.rpc('reveal_moment', {
       target_moment_id: momentId,
     });
     return this.momentResult(data, error);
+  }
+
+  async getThread(memoryId: string): Promise<ThreadState> {
+    const { data, error } = await this.client.rpc('get_memory_thread', {
+      target_memory_id: memoryId,
+    });
+    const failure = repositoryError(error);
+    if (failure) {
+      throw failure;
+    }
+    const threadFailure = threadApplicationError(data);
+    if (threadFailure) {
+      throw threadFailure;
+    }
+    if (!isObject(data) || !Array.isArray(data.messages) || typeof data.canWrite !== 'boolean') {
+      throw new MomentError('unexpected');
+    }
+    return {
+      canWrite: data.canWrite,
+      memoryId,
+      messages: data.messages.map(parseThreadMessage),
+    };
+  }
+
+  async sendThreadMessage(memoryId: string, body: string, clientMessageId: string) {
+    const { data, error } = await this.client.rpc('send_thread_message', {
+      message_body: body,
+      target_client_message_id: clientMessageId,
+      target_memory_id: memoryId,
+    });
+    const failure = repositoryError(error);
+    if (failure) {
+      throw failure;
+    }
+    const threadFailure = threadApplicationError(data);
+    if (threadFailure) {
+      throw threadFailure;
+    }
+    return parseThreadMessage(data);
+  }
+
+  subscribeToThread(memoryId: string, listener: () => void) {
+    const channel = this.client
+      .channel(`memory-thread:${memoryId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          filter: `memory_id=eq.${memoryId}`,
+          schema: 'public',
+          table: 'thread_message_events',
+        },
+        listener,
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          listener();
+        }
+      });
+    return () => {
+      void this.client.removeChannel(channel);
+    };
+  }
+
+  async setMemoryWidgetVisibility(memoryId: string, enabled: boolean) {
+    const { data, error } = await this.client.rpc('set_memory_widget_visibility', {
+      enabled,
+      target_memory_id: memoryId,
+    });
+    const failure = repositoryError(error);
+    if (failure) {
+      throw failure;
+    }
+    return data === true;
+  }
+
+  async createPrivateMediaUrl(path: string) {
+    const { data, error } = await this.client.storage
+      .from(MOMENT_MEDIA_BUCKET)
+      .createSignedUrl(path, 60 * 60);
+    if (error || !data?.signedUrl) {
+      throw new MomentError('network');
+    }
+    return data.signedUrl;
   }
 
   subscribe(listener: () => void) {
@@ -349,4 +567,58 @@ export class SupabaseMomentRepository implements MomentRepository {
     }
     return parseDailyMoment(data);
   }
+
+  private async uploadPhoto(path: string, capture: PhotoDraft['rear']) {
+    if (!capture) {
+      throw new MomentError('photoIncomplete');
+    }
+    const response = await fetch(capture.uri);
+    if (!response.ok) {
+      throw new MomentError('network');
+    }
+    const blob = await response.blob();
+    const { error } = await this.client.storage.from(MOMENT_MEDIA_BUCKET).upload(path, blob, {
+      cacheControl: '3600',
+      contentType: capture.mimeType,
+      upsert: true,
+    });
+    if (error) {
+      throw new MomentError('network');
+    }
+  }
+
+  private async removeUploadedPhotos(paths: string[]) {
+    await this.client.storage.from(MOMENT_MEDIA_BUCKET).remove(paths);
+  }
+}
+
+function threadApplicationError(value: unknown) {
+  if (!isObject(value) || typeof value.error !== 'string') {
+    return null;
+  }
+  switch (value.error) {
+    case 'archive_read_only':
+      return new ThreadError('archiveReadOnly');
+    case 'memory_not_found':
+      return new ThreadError('memoryNotFound');
+    case 'not_allowed':
+      return new ThreadError('notAllowed');
+    default:
+      return new ThreadError('unexpected');
+  }
+}
+
+function parseThreadMessage(value: unknown): ThreadMessage {
+  if (!isObject(value)) {
+    throw new MomentError('unexpected');
+  }
+  const authorId = stringValue(value.authorId);
+  const body = stringValue(value.body);
+  const clientMessageId = stringValue(value.clientMessageId);
+  const createdAt = stringValue(value.createdAt);
+  const id = stringValue(value.id);
+  if (!authorId || !body || !clientMessageId || !createdAt || !id) {
+    throw new MomentError('unexpected');
+  }
+  return { authorId, body, clientMessageId, createdAt, id };
 }

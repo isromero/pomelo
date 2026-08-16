@@ -8,7 +8,7 @@ import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, type SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { useMoment } from '@/features/moment/presentation/moment-provider';
+import { useMoment } from '@/features/moment/moment-api';
 import { usePair } from '@/features/pair/presentation/pair-provider';
 import { PremiumLockedSurface } from '@/features/premium/presentation/premium-locked-surface';
 import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
