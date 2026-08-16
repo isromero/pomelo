@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router';
 
 import { EmptyAppSectionScreen } from '@/components/pomelo/empty-app-section-screen';
 import { useAccount } from '@/features/account/presentation/account-provider';
+import { HistoryScreen } from '@/features/moment/presentation/history-screen';
 import { canBrowsePairApp } from '@/features/pair/application/pair-controller';
 import { usePair } from '@/features/pair/presentation/pair-provider';
 
@@ -18,19 +19,16 @@ export default function HistoryRoute() {
   if (!canBrowsePairApp(pair.state)) {
     return <Redirect href="/pair" />;
   }
+  if (pair.state.status === 'active') {
+    return <HistoryScreen />;
+  }
   const waitingForPartner = pair.state.status === 'waiting';
-  return (
-    <EmptyAppSectionScreen
-      activeTab="history"
-      body={
-        waitingForPartner
-          ? 'section.history.waitingBody'
-          : 'section.history.activeBody'
-      }
-      eyebrow="section.history.eyebrow"
-      icon="journal-outline"
-      title="section.history.title"
-      waitingForPartner={waitingForPartner}
-    />
-  );
+  return <EmptyAppSectionScreen
+    activeTab="history"
+    body="section.history.waitingBody"
+    eyebrow="section.history.eyebrow"
+    icon="journal-outline"
+    title="section.history.title"
+    waitingForPartner={waitingForPartner}
+  />;
 }

@@ -10,4 +10,6 @@ on conflict (concept_key) do update
 set format = excluded.format,
     prompt_es = excluded.prompt_es,
     prompt_en = excluded.prompt_en,
-    active = excluded.active;
+    active = excluded.active,
+    response_type = 'text',
+    response_options = '[]'::jsonb;

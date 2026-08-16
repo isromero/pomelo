@@ -280,6 +280,113 @@ async function runPairSmoke({ apiUrl, publishableKey, serverKey }) {
     await withTimeout(activeEvent, 'Creator did not receive the realtime Pair activation.');
     await creator.removeChannel(channel);
 
+    const { data: creatorMoment, error: creatorMomentError } = await creator.rpc(
+      'get_daily_moment',
+    );
+    if (creatorMomentError) {
+      throw creatorMomentError;
+    }
+    const { data: partnerMoment, error: partnerMomentError } = await partner.rpc(
+      'get_daily_moment',
+    );
+    if (partnerMomentError) {
+      throw partnerMomentError;
+    }
+    assert(
+      creatorMoment?.id === partnerMoment?.id,
+      'Both Pair members did not receive the same daily Moment.',
+    );
+    assert(
+      creatorMoment?.prompt?.conceptKey === 'small_gesture_smile',
+      'The first daily Moment did not use the designed Prompt.',
+    );
+
+    const { data: creatorSubmitted, error: creatorSubmitError } = await creator.rpc(
+      'submit_question_contribution',
+      {
+        response_text: 'The coffee you left ready for me.',
+        target_moment_id: creatorMoment.id,
+      },
+    );
+    if (creatorSubmitError) {
+      throw creatorSubmitError;
+    }
+    assert(
+      creatorSubmitted?.status === 'partially_submitted',
+      'The first Contribution did not leave the Moment partially submitted.',
+    );
+
+    const { data: hiddenContributions, error: hiddenContributionError } = await partner
+      .from('contributions')
+      .select('id')
+      .eq('moment_id', creatorMoment.id);
+    if (hiddenContributionError) {
+      throw hiddenContributionError;
+    }
+    assert(
+      hiddenContributions.length === 0,
+      'The partner could read a hidden Contribution before Reveal.',
+    );
+    const { data: partnerBeforeReveal, error: partnerBeforeRevealError } = await partner.rpc(
+      'get_daily_moment',
+    );
+    if (partnerBeforeRevealError) {
+      throw partnerBeforeRevealError;
+    }
+    assert(
+      partnerBeforeReveal?.partner?.contribution === null,
+      'The Moment query contract leaked the hidden partner response.',
+    );
+
+    const { data: partnerSubmitted, error: partnerSubmitError } = await partner.rpc(
+      'submit_question_contribution',
+      {
+        response_text: 'When you cooked after a very long day.',
+        target_moment_id: creatorMoment.id,
+      },
+    );
+    if (partnerSubmitError) {
+      throw partnerSubmitError;
+    }
+    assert(partnerSubmitted?.status === 'ready', 'The Moment did not become ready for both Users.');
+
+    const { data: revealed, error: revealError } = await partner.rpc('reveal_moment', {
+      target_moment_id: creatorMoment.id,
+    });
+    if (revealError) {
+      throw revealError;
+    }
+    assert(revealed?.status === 'revealed', 'Reveal did not transition the shared Moment.');
+    assert(revealed?.memoryId, 'Reveal did not create a Memory.');
+
+    const { data: creatorAfterReveal, error: creatorAfterRevealError } = await creator.rpc(
+      'get_daily_moment',
+    );
+    if (creatorAfterRevealError) {
+      throw creatorAfterRevealError;
+    }
+    assert(
+      creatorAfterReveal?.partner?.contribution?.responseText ===
+        'When you cooked after a very long day.',
+      'The creator could not read the partner Contribution after Reveal.',
+    );
+    const { data: history, error: historyError } = await creator.rpc('get_memory_history');
+    if (historyError) {
+      throw historyError;
+    }
+    assert(history?.length === 1, 'History did not contain exactly one revealed Memory.');
+
+    const { data: retryReveal, error: retryRevealError } = await creator.rpc('reveal_moment', {
+      target_moment_id: creatorMoment.id,
+    });
+    if (retryRevealError) {
+      throw retryRevealError;
+    }
+    assert(
+      retryReveal?.memoryId === revealed.memoryId,
+      'A repeated Reveal returned a different Memory.',
+    );
+
     const { data: reused } = await third.rpc('accept_pair_invitation', {
       invitation_credential: created.invitation.token,
     });

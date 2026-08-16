@@ -21,7 +21,8 @@ import {
   useAccount,
   useAccountClient,
 } from '@/features/account/presentation/account-provider';
-import { PairProvider } from '@/features/pair/presentation/pair-provider';
+import { MomentProvider } from '@/features/moment/presentation/moment-provider';
+import { PairProvider, usePair } from '@/features/pair/presentation/pair-provider';
 import { LocaleProvider } from '@/localization/locale-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -52,7 +53,9 @@ export default function RootLayout() {
       <AppearanceProvider>
         <AccountProvider>
           <PairRuntime>
-            <RootNavigator />
+            <MomentRuntime>
+              <RootNavigator />
+            </MomentRuntime>
           </PairRuntime>
         </AccountProvider>
       </AppearanceProvider>
@@ -83,5 +86,19 @@ function RootNavigator() {
         }}
       />
     </>
+  );
+}
+
+function MomentRuntime({ children }: PropsWithChildren) {
+  const client = useAccountClient();
+  const { status } = useAccount();
+  const pair = usePair();
+  const active =
+    status === 'ready' && pair.status === 'ready' && pair.state?.status === 'active';
+
+  return (
+    <MomentProvider active={active} client={client}>
+      {children}
+    </MomentProvider>
   );
 }
