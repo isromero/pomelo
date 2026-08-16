@@ -23,10 +23,13 @@ export type PremiumAccessState = {
 };
 
 export type PremiumOffer = {
+  amount: number;
+  currencyCode: string;
   description: string;
   packageId: string;
   plan: PremiumPlanId;
   price: string;
+  pricePerMonth: number | null;
   title: string;
 };
 

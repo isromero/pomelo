@@ -44,10 +44,13 @@ function isPremium(customerInfo: CustomerInfo) {
 function offerFromPackage(aPackage: PurchasesPackage): PremiumOffer {
   const plan = aPackage.packageType === PACKAGE_TYPE.ANNUAL ? 'annual' : 'monthly';
   return {
+    amount: aPackage.product.price,
+    currencyCode: aPackage.product.currencyCode,
     description: aPackage.product.description,
     packageId: aPackage.identifier,
     plan,
     price: aPackage.product.priceString,
+    pricePerMonth: aPackage.product.pricePerMonth,
     title: aPackage.product.title,
   };
 }

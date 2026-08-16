@@ -8,17 +8,23 @@ import {
 
 const offers: PremiumOffer[] = [
   {
+    amount: 29.99,
     description: 'Annual Pomelo Premium',
+    currencyCode: 'EUR',
     packageId: '$rc_annual',
     plan: 'annual',
     price: 'EUR 29.99',
+    pricePerMonth: 2.499166,
     title: 'Pomelo Premium Annual',
   },
   {
+    amount: 7.99,
     description: 'Monthly Pomelo Premium',
+    currencyCode: 'EUR',
     packageId: '$rc_monthly',
     plan: 'monthly',
     price: 'EUR 7.99',
+    pricePerMonth: 7.99,
     title: 'Pomelo Premium Monthly',
   },
 ];
