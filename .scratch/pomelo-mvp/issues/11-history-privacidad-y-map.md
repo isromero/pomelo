@@ -19,14 +19,14 @@ Convertir la History mínima en el archivo conjunto real de la Pair. Debe combin
 - [ ] History lista únicamente Moments revelados y mantiene orden cronológico estable al paginar o refrescar.
 - [ ] Question, Photo y Doodle se distinguen sin romper una estructura común de Memory.
 - [ ] El detalle muestra Prompt, Contributions disponibles, fecha, Pom y ciudad aproximada cuando exista.
-- [ ] Una Memory revelada permanece accesible indefinidamente mientras las reglas de archivo permitan al User verla.
+- [x] Una Memory revelada permanece accesible indefinidamente mientras las reglas de archivo permitan al User verla.
 - [ ] Añadir ubicación es opcional, se solicita en contexto y guarda ciudad aproximada en vez de coordenadas compartidas precisas.
 - [ ] El User puede retirar la ubicación y el cambio desaparece de detalle, Map, widgets y URLs derivadas.
 - [ ] Map solo muestra Memories con ubicación vigente, es de solo lectura y abre el detalle correspondiente.
 - [ ] El User puede ocultar o eliminar su propia Contribution y no puede eliminar directamente la aportación de su pareja.
 - [ ] Cuando una Contribution deja de estar disponible, la otra persona ve un placeholder estable de `Contenido eliminado` y la Memory no se rompe.
 - [ ] Photo y Doodle se sirven mediante acceso temporal autorizado y no dejan URLs públicas permanentes o cachés visibles después de logout.
-- [ ] Archive Mode conserva lectura permitida y bloquea mutaciones no autorizadas o nuevos Moments.
+- [x] Archive Mode conserva lectura permitida y bloquea mutaciones no autorizadas o nuevos Moments.
 - [ ] Pruebas con dos Users y un tercero cubren History, paginación, Map, eliminación, acceso temporal, revocación y aislamiento de Pair.
 
 ## Blocked by
@@ -36,4 +36,3 @@ Convertir la History mínima en el archivo conjunto real de la Pair. Debe combin
 - [09 - Doodle Moment colaborativo en tiempo real](09-doodle-colaborativo.md)
 
 ## Comments
-

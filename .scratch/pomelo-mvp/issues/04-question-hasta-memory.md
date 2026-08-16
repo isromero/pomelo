@@ -1,6 +1,6 @@
 # Question: primer Moment completo hasta Memory
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Parent
 
@@ -16,18 +16,18 @@ Entregar el primer tracer bullet del producto con dos miembros: la Pair recibe e
 
 ## Acceptance criteria
 
-- [ ] Una Pair activa recibe como máximo un Moment para su día local y ambos miembros ven el mismo Prompt.
-- [ ] El primer Moment usa el Prompt gratuito diseñado específicamente, no una selección aleatoria.
-- [ ] Question admite texto corto o una única elección A/B/C según el Prompt.
-- [ ] Cada miembro puede editar antes de enviar y no puede editar después de confirmar la Contribution.
-- [ ] Después de enviar, el User ve que su Contribution está guardada y que falta su pareja, sin conocer la respuesta ajena.
-- [ ] RLS y el contrato de consulta impiden que un miembro lea la Contribution de la pareja antes de Reveal, incluso fuera de la UI.
-- [ ] El Moment solo pasa a ready cuando existen las dos Contributions requeridas.
-- [ ] Cualquiera de los dos miembros puede ejecutar Reveal y el resultado queda revelado para ambos.
-- [ ] Reveal es atómico e idempotente y crea exactamente una Memory aunque ambos clientes reintenten simultáneamente.
-- [ ] La Memory conserva Prompt, dos Contributions, fecha y estado de Pom previsto, y aparece en una History cronológica mínima.
-- [ ] Las respuestas reveladas se muestran como conversación, con la propia a la derecha y la pareja a la izquierda, sin perder texto largo.
-- [ ] Una prueba end-to-end con dos Users demuestra Pair -> Question -> Contributions ocultas -> ready -> Reveal -> Memory -> History.
+- [x] Una Pair activa recibe como máximo un Moment para su día local y ambos miembros ven el mismo Prompt.
+- [x] El primer Moment usa el Prompt gratuito diseñado específicamente, no una selección aleatoria.
+- [x] Question admite texto corto o una única elección A/B/C según el Prompt.
+- [x] Cada miembro puede editar antes de enviar y no puede editar después de confirmar la Contribution.
+- [x] Después de enviar, el User ve que su Contribution está guardada y que falta su pareja, sin conocer la respuesta ajena.
+- [x] RLS y el contrato de consulta impiden que un miembro lea la Contribution de la pareja antes de Reveal, incluso fuera de la UI.
+- [x] El Moment solo pasa a ready cuando existen las dos Contributions requeridas.
+- [x] Cualquiera de los dos miembros puede ejecutar Reveal y el resultado queda revelado para ambos.
+- [x] Reveal es atómico e idempotente y crea exactamente una Memory aunque ambos clientes reintenten simultáneamente.
+- [x] La Memory conserva Prompt, dos Contributions, fecha y estado de Pom previsto, y aparece en una History cronológica mínima.
+- [x] Las respuestas reveladas se muestran como conversación, con la propia a la derecha y la pareja a la izquierda, sin perder texto largo.
+- [x] Una prueba end-to-end con dos Users demuestra Pair -> Question -> Contributions ocultas -> ready -> Reveal -> Memory -> History.
 
 ## Blocked by
 
@@ -35,3 +35,4 @@ Entregar el primer tracer bullet del producto con dos miembros: la Pair recibe e
 
 ## Comments
 
+- Tracer-bullet validado en `question_memory.test.sql` (33 aserciones), migración de lifecycle y superficies Home/Moment/History.

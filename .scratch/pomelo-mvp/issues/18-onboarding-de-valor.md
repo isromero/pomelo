@@ -16,11 +16,11 @@ Completar la experiencia de activación cuando ya existen superficies reales del
 
 ## Acceptance criteria
 
-- [ ] La primera pantalla comunica en pocos segundos que Pomelo propone un pequeño momento diario y construye una historia compartida.
+- [x] La primera pantalla comunica en pocos segundos que Pomelo propone un pequeño momento diario y construye una historia compartida.
 - [ ] Una demo cíclica aproximada de seis segundos muestra Prompt, participación de ambos, Reveal, reacción de Pom y entrada de la Memory en History.
 - [ ] Copy y botones permanecen estables mientras se anima únicamente la zona de demostración.
 - [ ] La demo usa componentes, composiciones y assets del producto real o representaciones exportables de ellos, no una experiencia visual contradictoria.
-- [ ] `Empezar` o el CTA final acordado inicia el alta y `Ya tengo una cuenta` se percibe inequívocamente como acción.
+- [x] `Empezar` o el CTA final acordado inicia el alta y `Ya tengo una cuenta` se percibe inequívocamente como acción.
 - [ ] Todas las pantallas posteriores permiten volver cuando la acción no es irreversible y conservan el progreso válido.
 - [ ] El recorrido mantiene el orden acordado: bienvenida, datos personales, avatar con reroll, birth date, cuenta, Pair/Invitation y datos compartidos cuando correspondan.
 - [ ] El segundo miembro recorre sus datos personales pero omite preguntas compartidas ya resueltas.

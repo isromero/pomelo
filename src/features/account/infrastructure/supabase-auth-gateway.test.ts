@@ -22,7 +22,11 @@ jest.mock('@/features/account/infrastructure/google-auth', () => ({
 
 function createGateway() {
   const auth = {
+    getSession: jest.fn(),
+    getUser: jest.fn(),
+    refreshSession: jest.fn(),
     signInWithIdToken: jest.fn(),
+    signOut: jest.fn(),
     updateUser: jest.fn(),
   };
   const gateway = new SupabaseAuthGateway({ auth } as unknown as PomeloSupabaseClient);
@@ -73,5 +77,48 @@ describe('SupabaseAuthGateway Apple sign-in', () => {
       session: { user: { displayNameHint: 'Irene' } },
     });
     expect(session.user.user_metadata).toBeUndefined();
+  });
+});
+
+describe('SupabaseAuthGateway session recovery', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('clears a persisted session when the Auth user was removed', async () => {
+    const { auth, gateway } = createGateway();
+    const session = {
+      access_token: 'access-token',
+      expires_at: 2_000_000_000,
+      user: { email: 'irene@example.com', id: 'user-1' },
+    };
+    auth.getSession.mockResolvedValue({ data: { session }, error: null });
+    auth.getUser.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'User from sub claim does not exist', status: 401 },
+    });
+    auth.signOut.mockResolvedValue({ error: null });
+
+    await expect(gateway.getSession()).resolves.toBeNull();
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('keeps a persisted session when Auth still validates its user', async () => {
+    const { auth, gateway } = createGateway();
+    const session = {
+      access_token: 'access-token',
+      expires_at: 2_000_000_000,
+      user: { email: 'irene@example.com', id: 'user-1' },
+    };
+    auth.getSession.mockResolvedValue({ data: { session }, error: null });
+    auth.getUser.mockResolvedValue({
+      data: { user: { id: 'user-1' } },
+      error: null,
+    });
+
+    await expect(gateway.getSession()).resolves.toMatchObject({
+      user: { id: 'user-1' },
+    });
+    expect(auth.signOut).not.toHaveBeenCalled();
   });
 });

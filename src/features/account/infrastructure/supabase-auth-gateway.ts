@@ -32,6 +32,19 @@ function accountError(error: SupabaseAuthError) {
   return new AccountError(code);
 }
 
+function isStaleSessionError(error: SupabaseAuthError) {
+  const message = error.message?.toLowerCase() ?? '';
+  return (
+    error.status === 401 ||
+    error.status === 404 ||
+    error.code === 'session_not_found' ||
+    error.code === 'user_not_found' ||
+    message.includes('user from sub claim') ||
+    message.includes('user not found') ||
+    message.includes('invalid jwt')
+  );
+}
+
 function authSession(session: {
   access_token: string;
   expires_at?: number;
@@ -94,16 +107,32 @@ export class SupabaseAuthGateway implements AuthGateway {
       return null;
     }
 
-    if (data.session.expires_at && data.session.expires_at <= Date.now() / 1000) {
+    let session = data.session;
+    if (session.expires_at && session.expires_at <= Date.now() / 1000) {
       const { data: refreshed, error: refreshError } = await this.client.auth.refreshSession();
       if (refreshError || !refreshed.session) {
         await this.client.auth.signOut({ scope: 'local' });
         return null;
       }
-      return authSession(refreshed.session);
+      session = refreshed.session;
     }
 
-    return authSession(data.session);
+    const { data: verified, error: verificationError } = await this.client.auth.getUser(
+      session.access_token,
+    );
+    if (verificationError) {
+      if (isStaleSessionError(verificationError)) {
+        await this.client.auth.signOut({ scope: 'local' });
+        return null;
+      }
+      return authSession(session);
+    }
+    if (!verified.user || verified.user.id !== session.user.id) {
+      await this.client.auth.signOut({ scope: 'local' });
+      return null;
+    }
+
+    return authSession(session);
   }
 
   onAuthStateChange(listener: (session: AuthSession | null) => void) {

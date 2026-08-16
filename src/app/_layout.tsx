@@ -113,7 +113,9 @@ function MomentRuntime({ children }: PropsWithChildren) {
   const { status } = useAccount();
   const pair = usePair();
   const active =
-    status === 'ready' && pair.status === 'ready' && pair.state?.status === 'active';
+    status === 'ready' &&
+    pair.status === 'ready' &&
+    (pair.state?.status === 'active' || pair.state?.status === 'archived');
 
   return (
     <MomentProvider active={active} client={client}>

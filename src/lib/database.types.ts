@@ -280,6 +280,72 @@ export type Database = {
         }
         Relationships: []
       }
+      premium_subscriptions: {
+        Row: {
+          access_until: string | null
+          last_event_at: string
+          last_event_id: string
+          product_id: string | null
+          revenuecat_app_user_id: string
+          status: string
+          store: string | null
+          subscriber_id: string
+          updated_at: string
+          will_renew: boolean
+        }
+        Insert: {
+          access_until?: string | null
+          last_event_at: string
+          last_event_id: string
+          product_id?: string | null
+          revenuecat_app_user_id: string
+          status: string
+          store?: string | null
+          subscriber_id: string
+          updated_at?: string
+          will_renew?: boolean
+        }
+        Update: {
+          access_until?: string | null
+          last_event_at?: string
+          last_event_id?: string
+          product_id?: string | null
+          revenuecat_app_user_id?: string
+          status?: string
+          store?: string | null
+          subscriber_id?: string
+          updated_at?: string
+          will_renew?: boolean
+        }
+        Relationships: []
+      }
+      premium_webhook_events: {
+        Row: {
+          app_user_id: string
+          event_id: string
+          event_type: string
+          occurred_at: string
+          payload: Json
+          processed_at: string
+        }
+        Insert: {
+          app_user_id: string
+          event_id: string
+          event_type: string
+          occurred_at: string
+          payload: Json
+          processed_at?: string
+        }
+        Update: {
+          app_user_id?: string
+          event_id?: string
+          event_type?: string
+          occurred_at?: string
+          payload?: Json
+          processed_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           appearance: string
@@ -378,6 +444,7 @@ export type Database = {
       get_daily_moment: { Args: never; Returns: Json }
       get_memory_history: { Args: never; Returns: Json }
       get_pair_state: { Args: never; Returns: Json }
+      get_premium_state: { Args: never; Returns: Json }
       list_memories: { Args: never; Returns: Json }
       memory_payload_for_user: {
         Args: { target_memory_id: string; target_user_id: string }
@@ -387,9 +454,21 @@ export type Database = {
         Args: { target_moment_id: string; target_user_id: string }
         Returns: Json
       }
+      pair_has_premium: { Args: { target_pair_id: string }; Returns: boolean }
       pair_state_for_user: { Args: { target_user_id: string }; Returns: Json }
+      premium_subscription_payload: {
+        Args: {
+          target_subscription: Database["public"]["Tables"]["premium_subscriptions"]["Row"]
+        }
+        Returns: Json
+      }
+      premium_timestamp_from_ms: { Args: { value: string }; Returns: string }
       preview_pair_invitation: {
         Args: { invitation_credential: string }
+        Returns: Json
+      }
+      process_revenuecat_webhook: {
+        Args: { target_payload: Json }
         Returns: Json
       }
       reveal_moment: { Args: { target_moment_id: string }; Returns: Json }

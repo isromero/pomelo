@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -18,10 +18,12 @@ import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
 import type { MomentErrorCode } from '@/features/moment/application/moment-controller';
-import type { DailyMoment } from '@/features/moment/domain/moment';
+import type { DailyMoment, Memory } from '@/features/moment/domain/moment';
 import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
 import { useMoment } from '@/features/moment/presentation/moment-provider';
 import type { PairStatus } from '@/features/pair/application/pair-controller';
+import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
+import { usePremium } from '@/features/premium/presentation/premium-provider';
 import { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 
@@ -75,6 +77,22 @@ function momentState(moment: DailyMoment | null): MomentState {
   return 'complete';
 }
 
+function dailyMomentFromMemory(memory: Memory): DailyMoment {
+  return {
+    format: 'question',
+    id: memory.momentId,
+    isFree: true,
+    localDate: memory.localDate,
+    memoryId: memory.id,
+    ownContribution: memory.ownContribution,
+    pairId: memory.pairId,
+    partner: memory.partner,
+    pomState: memory.pomState,
+    prompt: memory.prompt,
+    status: 'revealed',
+  };
+}
+
 function formatMomentDate(value: string, locale: 'en' | 'es') {
   const [year, month, day] = value.slice(0, 10).split('-').map(Number);
   return new Intl.DateTimeFormat(locale, {
@@ -102,15 +120,46 @@ function momentErrorKey(error: MomentErrorCode | null): TranslationKey {
 export function HomeScreen({
   pairStatus,
 }: {
-  pairStatus: Extract<PairStatus, 'active' | 'waiting'>;
+  pairStatus: Extract<PairStatus, 'active' | 'archived' | 'waiting'>;
 }) {
   const { colors } = useAppearance();
   const { controller, profile } = useAccount();
   const { locale, t } = useLocale();
   const momentRuntime = useMoment();
+  const premium = usePremium();
   const styles = createStyles(colors);
   const waitingForPartner = pairStatus === 'waiting';
-  const currentMomentState = momentState(momentRuntime.moment);
+  const firstMemory = momentRuntime.history[momentRuntime.history.length - 1] ?? null;
+  const displayMoment = momentRuntime.moment ?? (firstMemory ? dailyMomentFromMemory(firstMemory) : null);
+  const displayError =
+    momentRuntime.error === 'premiumRequired' || momentRuntime.error === 'pairNotActive'
+      ? null
+      : momentRuntime.error;
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const promptedMemoryIdRef = useRef<string | null>(null);
+  const currentMemoryId = momentRuntime.moment?.memoryId ?? firstMemory?.id ?? null;
+
+  useEffect(() => {
+    if (premium.access === 'premium') {
+      promptedMemoryIdRef.current = null;
+      return undefined;
+    }
+    if (
+      momentRuntime.status !== 'ready' ||
+      premium.status === 'idle' ||
+      premium.status === 'loading' ||
+      !currentMemoryId ||
+      promptedMemoryIdRef.current === currentMemoryId
+    ) {
+      return undefined;
+    }
+
+    promptedMemoryIdRef.current = currentMemoryId;
+    const timer = setTimeout(() => setPaywallVisible(true), 450);
+    return () => clearTimeout(timer);
+  }, [currentMemoryId, momentRuntime.status, premium.access, premium.status]);
+
+  const currentMomentState = momentState(displayMoment);
   const copy = waitingForPartner ? waitingHeroCopy : heroCopy[currentMomentState];
   const memoryCount = momentRuntime.history.length;
   const progressText = useMemo(
@@ -123,8 +172,8 @@ export function HomeScreen({
   );
   const date = waitingForPartner
     ? t('home.waiting.date')
-    : momentRuntime.moment
-      ? formatMomentDate(momentRuntime.moment.localDate, locale)
+    : displayMoment
+      ? formatMomentDate(displayMoment.localDate, locale)
       : t('home.date');
 
   return (
@@ -168,7 +217,7 @@ export function HomeScreen({
               <WaitingMomentCard />
             ) : momentRuntime.status === 'loading' || momentRuntime.status === 'idle' ? (
               <MomentLoadingCard />
-            ) : momentRuntime.status === 'error' || !momentRuntime.moment ? (
+            ) : momentRuntime.status === 'error' || !displayMoment ? (
               <MomentFailureCard
                 error={momentRuntime.error}
                 onRetry={() => void momentRuntime.controller.refresh()}
@@ -176,9 +225,9 @@ export function HomeScreen({
             ) : (
               <DailyMomentCard
                 busy={momentRuntime.busy}
-                error={momentRuntime.error}
-                key={momentRuntime.moment.id}
-                moment={momentRuntime.moment}
+                error={displayError}
+                key={displayMoment.id}
+                moment={displayMoment}
                 onReveal={() => void momentRuntime.controller.revealMoment()}
                 onSubmit={(response) => void momentRuntime.controller.submitQuestion(response)}
               />
@@ -188,6 +237,12 @@ export function HomeScreen({
 
         <BottomNavigation />
       </View>
+      <PremiumPaywall
+        onClose={() => {
+          setPaywallVisible(false);
+        }}
+        visible={premium.access !== 'premium' && paywallVisible}
+      />
     </SafeAreaView>
   );
 }

@@ -1,34 +1,79 @@
+export type PremiumPlanId = 'annual' | 'monthly';
+
+export type PremiumAccess = 'archive' | 'free' | 'premium';
+
+export type PremiumEntitlementStatus =
+  | 'active'
+  | 'cancelled'
+  | 'expired'
+  | 'gracePeriod'
+  | 'none';
+
+export type PremiumEntitlement = {
+  expiresAt: string | null;
+  productId: string | null;
+  status: PremiumEntitlementStatus;
+  subscriberId: string | null;
+  willRenew: boolean;
+};
+
+export type PremiumAccessState = {
+  access: PremiumAccess;
+  entitlement: PremiumEntitlement | null;
+};
+
 export type PremiumOffer = {
+  amount: number;
+  currencyCode: string;
   description: string;
   packageId: string;
+  plan: PremiumPlanId;
   price: string;
+  pricePerMonth: number | null;
   title: string;
 };
 
-export type PremiumErrorCode = 'configuration' | 'network' | 'unavailable' | 'unexpected';
+export type PremiumStoreState = {
+  isPremium: boolean;
+  offers: PremiumOffer[];
+};
+
+export type PremiumErrorCode =
+  | 'configuration'
+  | 'network'
+  | 'unexpected'
+  | 'unavailable';
 
 export type PremiumSnapshot = {
+  access: PremiumAccess;
   busy: boolean;
+  entitlement: PremiumEntitlement | null;
   error: PremiumErrorCode | null;
-  isPremium: boolean;
-  offer: PremiumOffer | null;
-  status: 'idle' | 'ready' | 'error';
+  offers: PremiumOffer[];
+  status: 'error' | 'idle' | 'loading' | 'ready';
+  storeEntitled: boolean;
 };
 
 export interface PremiumGateway {
   configure(userId: string): Promise<void>;
-  getState(): Promise<{ isPremium: boolean; offer: PremiumOffer | null }>;
-  purchase(): Promise<boolean>;
+  getState(): Promise<PremiumStoreState>;
+  purchase(plan: PremiumPlanId): Promise<boolean>;
   restore(): Promise<boolean>;
   reset(): Promise<void>;
 }
 
+export interface PremiumAccessRepository {
+  getState(): Promise<PremiumAccessState>;
+}
+
 const initialSnapshot: PremiumSnapshot = {
+  access: 'free',
   busy: false,
+  entitlement: null,
   error: null,
-  isPremium: false,
-  offer: null,
+  offers: [],
   status: 'idle',
+  storeEntitled: false,
 };
 
 function errorCode(error: unknown): PremiumErrorCode {
@@ -41,6 +86,7 @@ function errorCode(error: unknown): PremiumErrorCode {
 export class PremiumError extends Error {
   constructor(public readonly code: PremiumErrorCode) {
     super(code);
+    this.name = 'PremiumError';
   }
 }
 
@@ -49,7 +95,10 @@ export class PremiumController {
   private operation = 0;
   private snapshot = initialSnapshot;
 
-  constructor(private readonly gateway: PremiumGateway) {}
+  constructor(
+    private readonly gateway: PremiumGateway,
+    private readonly accessRepository: PremiumAccessRepository,
+  ) {}
 
   getSnapshot = () => this.snapshot;
 
@@ -60,15 +109,11 @@ export class PremiumController {
 
   async start(userId: string) {
     const operation = ++this.operation;
-    this.update({ busy: true, error: null, status: 'idle' });
+    this.update({ busy: true, error: null, status: 'loading' });
 
     try {
       await this.gateway.configure(userId);
-      const state = await this.gateway.getState();
-      if (operation !== this.operation) {
-        return;
-      }
-      this.update({ busy: false, ...state, status: 'ready' });
+      await this.loadState(operation);
     } catch (error) {
       if (operation !== this.operation) {
         return;
@@ -77,17 +122,40 @@ export class PremiumController {
     }
   }
 
-  async purchase() {
-    if (this.snapshot.busy || !this.snapshot.offer) {
+  async refresh() {
+    if (this.snapshot.busy) {
+      return;
+    }
+    const operation = this.operation;
+    this.update({ busy: true, error: null, status: 'loading' });
+
+    try {
+      await this.loadState(operation);
+    } catch (error) {
+      if (operation === this.operation) {
+        this.update({ busy: false, error: errorCode(error), status: 'error' });
+      }
+    }
+  }
+
+  async purchase(plan: PremiumPlanId) {
+    if (
+      this.snapshot.busy ||
+      this.snapshot.access === 'premium' ||
+      !this.snapshot.offers.some((offer) => offer.plan === plan)
+    ) {
       return;
     }
 
+    const operation = this.operation;
     this.update({ busy: true, error: null });
     try {
-      const isPremium = await this.gateway.purchase();
-      this.update({ busy: false, isPremium });
+      const storeEntitled = await this.gateway.purchase(plan);
+      await this.loadState(operation, storeEntitled);
     } catch (error) {
-      this.update({ busy: false, error: errorCode(error) });
+      if (operation === this.operation) {
+        this.update({ busy: false, error: errorCode(error) });
+      }
     }
   }
 
@@ -96,20 +164,49 @@ export class PremiumController {
       return;
     }
 
+    const operation = this.operation;
     this.update({ busy: true, error: null });
     try {
-      const isPremium = await this.gateway.restore();
-      this.update({ busy: false, isPremium });
+      const storeEntitled = await this.gateway.restore();
+      await this.loadState(operation, storeEntitled);
     } catch (error) {
-      this.update({ busy: false, error: errorCode(error) });
+      if (operation === this.operation) {
+        this.update({ busy: false, error: errorCode(error) });
+      }
     }
+  }
+
+  clearError() {
+    this.update({ error: null });
   }
 
   async stop() {
     this.operation += 1;
-    await this.gateway.reset();
-    this.snapshot = initialSnapshot;
-    this.emit();
+    try {
+      await this.gateway.reset();
+    } finally {
+      this.snapshot = initialSnapshot;
+      this.emit();
+    }
+  }
+
+  private async loadState(operation: number, storeEntitled?: boolean) {
+    const [storeState, accessState] = await Promise.all([
+      this.gateway.getState(),
+      this.accessRepository.getState(),
+    ]);
+    if (operation !== this.operation) {
+      return;
+    }
+    this.update({
+      access: accessState.access,
+      busy: false,
+      entitlement: accessState.entitlement,
+      error: null,
+      offers: storeState.offers,
+      status: 'ready',
+      storeEntitled: storeEntitled ?? storeState.isPremium,
+    });
   }
 
   private update(patch: Partial<PremiumSnapshot>) {

@@ -19,7 +19,7 @@ export default function HistoryRoute() {
   if (!canBrowsePairApp(pair.state)) {
     return <Redirect href="/pair" />;
   }
-  if (pair.state.status === 'active') {
+  if (pair.state.status === 'active' || pair.state.status === 'archived') {
     return <HistoryScreen />;
   }
   const waitingForPartner = pair.state.status === 'waiting';

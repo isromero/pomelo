@@ -53,7 +53,7 @@ describe('Pair app access', () => {
 
   it('keeps setup and Archive Mode in their dedicated flows', () => {
     expect(canBrowsePairApp(null)).toBe(false);
-    expect(canBrowsePairApp({ ...activeState, status: 'archived' })).toBe(false);
+    expect(canBrowsePairApp({ ...activeState, status: 'archived' })).toBe(true);
   });
 });
 
