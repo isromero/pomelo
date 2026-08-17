@@ -168,4 +168,15 @@ describe('Journal Entry dates', () => {
       state: 'upcoming',
     });
   });
+
+  it('selects the next widget event by instant across time zones', () => {
+    const tokyo = { ...entry, id: 'tokyo', startTime: '09:00', timeZone: 'Asia/Tokyo' };
+    const madrid = { ...entry, id: 'madrid', startTime: '09:00', timeZone: 'Europe/Madrid' };
+    const occurrences = [tokyo, madrid].map((item) => ({
+      endDate: '2026-08-20', id: item.id, kind: 'entry' as const, name: item.title,
+      startDate: '2026-08-20', startTime: item.startTime, timeZone: item.timeZone,
+    }));
+
+    expect(nextWidgetOccurrence([tokyo, madrid], occurrences, new Date('2026-08-20T01:00:00Z'))?.id).toBe('madrid');
+  });
 });

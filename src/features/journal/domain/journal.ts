@@ -123,9 +123,48 @@ export type JournalProjection = {
 export function nextWidgetOccurrence(
   entries: JournalEntry[],
   upcoming: UpcomingOccurrence[],
+  now = new Date(),
 ) {
   const hiddenEntryIds = new Set(entries.filter((entry) => entry.widgetHidden).map((entry) => entry.id));
-  return upcoming.find((item) => item.kind === 'milestone' || !hiddenEntryIds.has(item.id)) ?? null;
+  return upcoming
+    .filter((item) => item.kind === 'milestone' || !hiddenEntryIds.has(item.id))
+    .map((item) => ({ item, window: occurrenceWindow(item) }))
+    .filter(({ window }) => window.end >= now.getTime())
+    .sort((left, right) => left.window.start - right.window.start || left.item.id.localeCompare(right.item.id))[0]?.item ?? null;
+}
+
+function zonedDateTime(value: string, time: string, timeZone: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  const target = Date.UTC(year, month - 1, day, hour, minute);
+  let instant = target;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      day: '2-digit', hour: '2-digit', hourCycle: 'h23', minute: '2-digit',
+      month: '2-digit', timeZone, year: 'numeric',
+    }).formatToParts(new Date(instant));
+    const fields = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const represented = Date.UTC(Number(fields.year), Number(fields.month) - 1, Number(fields.day), Number(fields.hour), Number(fields.minute));
+    instant = target - (represented - instant);
+  }
+  return instant;
+}
+
+function occurrenceWindow(item: UpcomingOccurrence) {
+  const timeZone = item.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    const start = zonedDateTime(item.startDate, item.startTime ?? '00:00', timeZone);
+    const end = item.startTime && item.endDate === item.startDate
+      ? start
+      : zonedDateTime(item.endDate, '23:59', timeZone);
+    return { end, start };
+  } catch {
+    const start = Date.parse(`${item.startDate}T${item.startTime ?? '00:00'}:00Z`);
+    const end = item.startTime && item.endDate === item.startDate
+      ? start
+      : Date.parse(`${item.endDate}T23:59:00Z`);
+    return { end, start };
+  }
 }
 
 const dateOnlyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
