@@ -99,6 +99,7 @@ class FakeMomentRepository implements MomentRepository {
   revealError: MomentError | null = null;
   dailyError: MomentError | null = null;
   submitError: MomentError | null = null;
+  nextMoment: DailyMoment | null = null;
 
   subscribe(listener: () => void) {
     this.listener = listener;
@@ -111,7 +112,7 @@ class FakeMomentRepository implements MomentRepository {
     if (this.dailyError) {
       throw this.dailyError;
     }
-    return this.moment;
+    return this.nextMoment ?? this.moment;
   }
 
   async getHistory() {
@@ -219,6 +220,27 @@ describe('MomentController', () => {
       error: null,
       history: [memory],
       moment: expect.objectContaining({ memoryId: 'memory-1', status: 'revealed' }),
+    });
+  });
+
+  it('shows the next Moment after Reveal when one has already been advanced', async () => {
+    const repository = new FakeMomentRepository();
+    const controller = new MomentController(repository);
+    await controller.start();
+    repository.moment = savedMoment;
+    await controller.refresh();
+    repository.nextMoment = {
+      ...openMoment,
+      id: 'moment-2',
+      localDate: '2026-08-17',
+    };
+
+    await controller.revealMoment();
+
+    expect(controller.getSnapshot()).toMatchObject({
+      error: null,
+      moment: expect.objectContaining({ id: 'moment-2', status: 'open' }),
+      status: 'ready',
     });
   });
 

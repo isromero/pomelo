@@ -315,10 +315,9 @@ export class MomentController {
       return;
     }
     await this.runMomentOperation(async () => {
-      const revealed = await this.repository.revealMoment(moment.id);
-      const history = await this.repository.getHistory();
-      this.update({ history, moment: revealed });
-      return revealed;
+      await this.repository.revealMoment(moment.id);
+      await this.refresh();
+      return this.snapshot.moment ?? moment;
     });
   }
 
