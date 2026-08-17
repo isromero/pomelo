@@ -836,6 +836,7 @@ export type Database = {
       delete_important_date: { Args: { target_date_id: string }; Returns: Json }
       dissolve_pair: { Args: never; Returns: Json }
       get_daily_moment: { Args: never; Returns: Json }
+      get_daily_moment_legacy: { Args: never; Returns: Json }
       get_doodle_session: { Args: { target_moment_id: string }; Returns: Json }
       get_important_date_widget: { Args: never; Returns: Json }
       get_memory_history: { Args: never; Returns: Json }
