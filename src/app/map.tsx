@@ -2,7 +2,7 @@ import { Redirect } from 'expo-router';
 
 import { EmptyAppSectionScreen } from '@/components/pomelo/empty-app-section-screen';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { useMoment } from '@/features/moment/presentation/moment-provider';
+import { useMoment } from '@/features/moment/moment-api';
 import { PremiumLockedSurface } from '@/features/premium/presentation/premium-locked-surface';
 import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
@@ -50,7 +50,7 @@ export default function MapRoute() {
 
 function MapContent({ pairStatus }: { pairStatus: Extract<PairStatus, 'active' | 'archived'> }) {
   const { colors } = useAppearance();
-  const { profile, controller } = useAccount();
+  const { profile } = useAccount();
   const { history, moment } = useMoment();
   const premium = usePremium();
   const premiumActive = premium.access === 'premium';
@@ -64,7 +64,6 @@ function MapContent({ pairStatus }: { pairStatus: Extract<PairStatus, 'active' |
         <View style={styles.shell}>
           <AppHeader
             avatarKey={profile?.avatarKey ?? 'calm'}
-            onAvatarPress={() => void controller.signOut()}
             streakCount={moment?.streak.current ?? 0}
             showStreak
           />

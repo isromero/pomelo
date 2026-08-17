@@ -2,7 +2,7 @@ import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { useMoment } from '@/features/moment/presentation/moment-provider';
+import { useMoment } from '@/features/moment/moment-api';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
 import { captureDiagnostic } from '@/lib/diagnostics';
 import { useLocale } from '@/localization/locale-provider';

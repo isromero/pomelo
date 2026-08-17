@@ -35,17 +35,19 @@ class FakePremiumGateway implements PremiumGateway {
   purchasedPlan: 'annual' | 'monthly' | null = null;
   restored = false;
   storeEntitled = false;
+  purchaseResult = true;
+  availableOffers = offers;
 
   async configure() {}
 
   async getState() {
-    return { isPremium: this.storeEntitled, offers };
+    return { isPremium: this.storeEntitled, offers: this.availableOffers };
   }
 
   async purchase(plan: 'annual' | 'monthly') {
     this.purchasedPlan = plan;
     this.storeEntitled = true;
-    return true;
+    return this.purchaseResult;
   }
 
   async restore() {
@@ -58,9 +60,14 @@ class FakePremiumGateway implements PremiumGateway {
 
 class FakeAccessRepository implements PremiumAccessRepository {
   state = freeState;
+  syncCalls = 0;
 
   async getState() {
     return this.state;
+  }
+
+  async sync() {
+    this.syncCalls += 1;
   }
 }
 
@@ -88,6 +95,7 @@ describe('PremiumController', () => {
     await controller.purchase('monthly');
 
     expect(gateway.purchasedPlan).toBe('monthly');
+    expect(accessRepository.syncCalls).toBe(1);
     expect(controller.getSnapshot()).toMatchObject({
       access: 'free',
       busy: false,
@@ -111,6 +119,17 @@ describe('PremiumController', () => {
     expect(controller.getSnapshot().access).toBe('premium');
   });
 
+  it('automatically projects an existing store entitlement on startup', async () => {
+    const gateway = new FakePremiumGateway();
+    gateway.storeEntitled = true;
+    const accessRepository = new FakeAccessRepository();
+    const controller = new PremiumController(gateway, accessRepository);
+
+    await controller.start('user-1');
+
+    expect(accessRepository.syncCalls).toBe(1);
+  });
+
   it('restores a subscription and keeps the entitlement status visible', async () => {
     const gateway = new FakePremiumGateway();
     gateway.storeEntitled = true;
@@ -131,5 +150,32 @@ describe('PremiumController', () => {
 
     expect(gateway.restored).toBe(true);
     expect(controller.getSnapshot()).toMatchObject({ access: 'premium', storeEntitled: true });
+  });
+
+  it('surfaces a RevenueCat purchase that did not activate the configured entitlement', async () => {
+    const gateway = new FakePremiumGateway();
+    gateway.purchaseResult = false;
+    const controller = new PremiumController(gateway, new FakeAccessRepository());
+
+    await controller.start('user-1');
+    await controller.purchase('annual');
+
+    expect(controller.getSnapshot()).toMatchObject({
+      error: 'purchaseNotActivated',
+      status: 'ready',
+      storeEntitled: false,
+    });
+  });
+
+  it('does not silently ignore a plan that is not loaded', async () => {
+    const gateway = new FakePremiumGateway();
+    gateway.availableOffers = [];
+    const controller = new PremiumController(gateway, new FakeAccessRepository());
+    await controller.start('user-1');
+
+    await controller.purchase('annual');
+
+    expect(controller.getSnapshot()).toMatchObject({ error: 'unavailable', busy: false });
+    expect(gateway.purchasedPlan).toBeNull();
   });
 });

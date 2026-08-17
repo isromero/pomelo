@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAppearance } from '@/appearance/appearance-provider';
 import { fonts, radii, type SemanticColors } from '@/constants/pomelo-theme';
+import type { DoodleController, DoodleSnapshot } from '@/features/moment/application/doodle-controller';
 import type { MomentErrorCode } from '@/features/moment/application/moment-controller';
 import {
   formatMomentRemaining,
@@ -13,18 +14,29 @@ import {
   type Contribution,
   type DailyMoment,
   type MomentWindow,
+  type PhotoDraft,
+  type QuestionPrompt,
   type QuestionResponse,
 } from '@/features/moment/domain/moment';
+import { DoodleMomentCard } from '@/features/moment/presentation/doodle-moment-card';
+import { PhotoMomentCard } from '@/features/moment/presentation/photo-moment-card';
 import { useLocale } from '@/localization/locale-provider';
 
 type DailyMomentCardProps = {
   busy: boolean;
+  createPrivateMediaUrl(path: string): Promise<string>;
   draft: QuestionResponse | null;
   error: MomentErrorCode | null;
   moment: DailyMoment;
   onDraftChange(response: QuestionResponse): void;
+  onPhotoDraftChange(draft: PhotoDraft): void;
+  onUseTestPhotos(): Promise<void>;
+  onPhotoSubmit(): void;
   onReveal(): void;
   onSubmit(response: QuestionResponse): void;
+  doodle: DoodleSnapshot;
+  doodleController: DoodleController;
+  photoDraft: PhotoDraft | null;
   syncPending: boolean;
 };
 
@@ -102,7 +114,40 @@ function ActionButton({
   );
 }
 
-export function DailyMomentCard({
+export function DailyMomentCard(props: DailyMomentCardProps) {
+  if (props.moment.format === 'photo') {
+    return (
+      <PhotoMomentCard
+        busy={props.busy}
+        createPrivateMediaUrl={props.createPrivateMediaUrl}
+        error={props.error}
+        moment={props.moment}
+        onDraftChange={props.onPhotoDraftChange}
+        onReveal={props.onReveal}
+        onSubmit={props.onPhotoSubmit}
+        onUseTestPhotos={props.onUseTestPhotos}
+        photoDraft={props.photoDraft}
+        syncPending={props.syncPending}
+      />
+    );
+  }
+  if (props.moment.format === 'doodle') {
+    return (
+      <DoodleMomentCard
+        busy={props.busy}
+        doodle={props.doodle}
+        doodleController={props.doodleController}
+        error={props.error}
+        moment={props.moment}
+        onReveal={props.onReveal}
+        syncPending={props.syncPending}
+      />
+    );
+  }
+  return <QuestionMomentCard {...props} />;
+}
+
+function QuestionMomentCard({
   busy,
   draft,
   error,
@@ -120,6 +165,7 @@ export function DailyMomentCard({
   const [clock, setClock] = useState(() => Date.now());
   const submitted = moment.ownContribution !== null;
   const revealed = moment.status === 'revealed';
+  const prompt = moment.prompt as QuestionPrompt;
   const window = getMomentWindow(moment, new Date(clock));
   const expired = window === 'expired';
 
@@ -134,7 +180,7 @@ export function DailyMomentCard({
   const submit = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onSubmit(
-      moment.prompt.responseType === 'choice'
+      prompt.responseType === 'choice'
         ? { choice: draftChoice ?? undefined }
         : { text: draftText },
     );
@@ -173,7 +219,7 @@ export function DailyMomentCard({
 
       <View style={styles.prompt}>
         <Text style={styles.promptLabel}>{t('moment.promptLabel')}</Text>
-        <Text style={styles.question}>{moment.prompt.text}</Text>
+        <Text style={styles.question}>{prompt.text}</Text>
       </View>
 
       <LifecycleBanner moment={moment} window={window} now={new Date(clock)} />
@@ -221,9 +267,9 @@ export function DailyMomentCard({
             <Ionicons color={colors.inkSecondary} name="lock-closed-outline" size={17} />
             <Text style={styles.systemText}>{t('moment.privacy')}</Text>
           </View>
-          {moment.prompt.responseType === 'choice' ? (
+          {prompt.responseType === 'choice' ? (
             <View style={styles.options}>
-              {moment.prompt.options.map((option) => {
+              {prompt.options.map((option) => {
                 const selected = draftChoice === option;
                 return (
                   <Pressable

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppearance } from '@/appearance/appearance-provider';
@@ -9,12 +10,10 @@ import { useLocale } from '@/localization/locale-provider';
 
 export function AppHeader({
   avatarKey,
-  onAvatarPress,
   streakCount = 0,
   showStreak = true,
 }: {
   avatarKey: AvatarKey;
-  onAvatarPress(): void;
   showStreak?: boolean;
   streakCount?: number;
 }) {
@@ -38,9 +37,9 @@ export function AppHeader({
           </View>
         )}
         <Pressable
-          accessibilityLabel={t('common.signOut')}
+          accessibilityLabel={t('settings.open')}
           accessibilityRole="button"
-          onPress={onAvatarPress}
+          onPress={() => router.push('/settings')}
           style={styles.avatar}>
           <Avatar avatarKey={avatarKey} size={40} />
         </Pressable>

@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+import { notifyPremiumPair } from '../_shared/premium-notify.ts';
+
 Deno.serve(async (request) => {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
@@ -35,6 +37,12 @@ Deno.serve(async (request) => {
   }
   if (data?.status === 'rejected') {
     return Response.json(data, { status: 400 });
+  }
+  if (data?.status === 'processed') {
+    try {
+      await notifyPremiumPair(client, payload?.event?.app_user_id ?? payload?.app_user_id);
+    } catch {
+    }
   }
   return Response.json(data, { status: 200 });
 });

@@ -63,8 +63,8 @@ select results_eq(
 );
 select results_eq(
   'select count(*)::bigint from public.prompt_concepts where active',
-  array[1::bigint],
-  'Authenticated Users can read active Prompt concepts'
+  array[3::bigint],
+  'Authenticated Users can read the three active Prompt formats'
 );
 
 select * from finish();

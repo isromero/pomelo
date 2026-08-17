@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -23,8 +23,9 @@ import {
   type DailyMoment,
   type Memory,
 } from '@/features/moment/domain/moment';
+import { createDevelopmentPhotoDraft } from '@/features/moment/infrastructure/development-test-photos';
 import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
-import { useMoment } from '@/features/moment/presentation/moment-provider';
+import { useDoodleMoment, useMoment } from '@/features/moment/moment-api';
 import type { PairStatus } from '@/features/pair/application/pair-controller';
 import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
@@ -73,7 +74,9 @@ const waitingHeroCopy = {
 
 function momentState(moment: DailyMoment | null): MomentState {
   if (!moment || moment.status === 'open' || moment.status === 'partially_submitted') {
-    return moment?.ownContribution ? 'waiting' : 'answer';
+    return moment?.ownContribution || (moment?.format === 'doodle' && moment.doodle?.ownCompleted)
+      ? 'waiting'
+      : 'answer';
   }
   if (moment.status === 'ready') {
     return 'ready';
@@ -83,7 +86,7 @@ function momentState(moment: DailyMoment | null): MomentState {
 
 function dailyMomentFromMemory(memory: Memory): DailyMoment {
   return {
-    format: 'question',
+    format: memory.format ?? 'question',
     id: memory.momentId,
     isFree: true,
     lifecycle: {
@@ -98,6 +101,13 @@ function dailyMomentFromMemory(memory: Memory): DailyMoment {
     partner: memory.partner,
     pomState: memory.pomState,
     prompt: memory.prompt,
+    doodle: memory.doodleDocument
+      ? {
+          document: memory.doodleDocument,
+          ownCompleted: true,
+          partnerCompleted: true,
+        }
+      : null,
     streak: initialStreakState,
     status: 'revealed',
   };
@@ -133,9 +143,14 @@ export function HomeScreen({
   pairStatus: Extract<PairStatus, 'active' | 'archived' | 'waiting'>;
 }) {
   const { colors } = useAppearance();
-  const { controller, profile } = useAccount();
+  const { profile } = useAccount();
   const { locale, t } = useLocale();
   const momentRuntime = useMoment();
+  const createPrivateMediaUrl = useCallback(
+    (path: string) => momentRuntime.controller.createPrivateMediaUrl(path),
+    [momentRuntime.controller],
+  );
+  const { controller: doodleController, snapshot: doodle } = useDoodleMoment();
   const premium = usePremium();
   const styles = createStyles(colors);
   const waitingForPartner = pairStatus === 'waiting';
@@ -146,28 +161,55 @@ export function HomeScreen({
       ? null
       : momentRuntime.error;
   const [paywallVisible, setPaywallVisible] = useState(false);
-  const promptedMemoryIdRef = useRef<string | null>(null);
-  const currentMemoryId = momentRuntime.moment?.memoryId ?? firstMemory?.id ?? null;
+  const [paywallPending, setPaywallPending] = useState(false);
+  const paywallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (premium.access === 'premium') {
-      promptedMemoryIdRef.current = null;
-      return undefined;
-    }
     if (
-      momentRuntime.status !== 'ready' ||
+      !paywallPending ||
+      premium.access === 'premium' ||
       premium.status === 'idle' ||
-      premium.status === 'loading' ||
-      !currentMemoryId ||
-      promptedMemoryIdRef.current === currentMemoryId
+      premium.status === 'loading'
     ) {
       return undefined;
     }
 
-    promptedMemoryIdRef.current = currentMemoryId;
-    const timer = setTimeout(() => setPaywallVisible(true), 450);
-    return () => clearTimeout(timer);
-  }, [currentMemoryId, momentRuntime.status, premium.access, premium.status]);
+    paywallTimerRef.current = setTimeout(() => {
+      paywallTimerRef.current = null;
+      setPaywallPending(false);
+      setPaywallVisible(true);
+    }, 450);
+    return () => {
+      if (paywallTimerRef.current) {
+        clearTimeout(paywallTimerRef.current);
+        paywallTimerRef.current = null;
+      }
+    };
+  }, [paywallPending, premium.access, premium.status]);
+
+  useEffect(() => () => {
+    if (paywallTimerRef.current) {
+      clearTimeout(paywallTimerRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (premium.access === 'premium' && momentRuntime.error === 'premiumRequired') {
+      void momentRuntime.controller.refresh();
+    }
+  }, [momentRuntime.controller, momentRuntime.error, premium.access]);
+
+  const revealMoment = async () => {
+    await momentRuntime.controller.revealMoment();
+    const revealedMoment = momentRuntime.controller.getSnapshot().moment;
+    if (
+      premium.access !== 'premium' &&
+      revealedMoment?.status === 'revealed' &&
+      revealedMoment.memoryId
+    ) {
+      setPaywallPending(true);
+    }
+  };
 
   const currentMomentState = momentState(displayMoment);
   const copy = waitingForPartner ? waitingHeroCopy : heroCopy[currentMomentState];
@@ -180,6 +222,11 @@ export function HomeScreen({
       ),
     [memoryCount, t],
   );
+  const showPremiumPrompt =
+    pairStatus === 'active' &&
+    momentRuntime.status === 'ready' &&
+    memoryCount > 0 &&
+    premium.access !== 'premium';
   const date = waitingForPartner
     ? t('home.waiting.date')
     : displayMoment
@@ -196,7 +243,6 @@ export function HomeScreen({
           showsVerticalScrollIndicator={false}>
           <AppHeader
             avatarKey={profile?.avatarKey ?? 'calm'}
-            onAvatarPress={() => void controller.signOut()}
             streakCount={momentRuntime.moment?.streak.current ?? 0}
             showStreak={!waitingForPartner}
           />
@@ -236,16 +282,32 @@ export function HomeScreen({
             ) : (
               <DailyMomentCard
                 busy={momentRuntime.busy}
+                createPrivateMediaUrl={createPrivateMediaUrl}
                 draft={momentRuntime.draft}
                 error={displayError}
                 key={displayMoment.id}
                 moment={displayMoment}
-                onReveal={() => void momentRuntime.controller.revealMoment()}
+                onPhotoDraftChange={(draft) => void momentRuntime.controller.savePhotoDraft(draft)}
+                onUseTestPhotos={async () => {
+                  const draft = await createDevelopmentPhotoDraft(displayMoment.id);
+                  await momentRuntime.controller.savePhotoDraft(draft);
+                }}
+                onPhotoSubmit={() => void momentRuntime.controller.submitPhoto()}
+                onReveal={() => void revealMoment()}
                 onDraftChange={(draft) => void momentRuntime.controller.saveDraft(draft)}
                 onSubmit={(response) => void momentRuntime.controller.submitQuestion(response)}
+                doodle={doodle}
+                doodleController={doodleController}
+                photoDraft={momentRuntime.photoDraft}
                 syncPending={momentRuntime.syncPending}
               />
             )}
+            {showPremiumPrompt ? (
+              <PremiumNextStep
+                onPress={() => setPaywallVisible(true)}
+                syncing={premium.storeEntitled}
+              />
+            ) : null}
           </View>
         </ScrollView>
 
@@ -258,6 +320,43 @@ export function HomeScreen({
         visible={premium.access !== 'premium' && paywallVisible}
       />
     </SafeAreaView>
+  );
+}
+
+function PremiumNextStep({ onPress, syncing }: { onPress(): void; syncing: boolean }) {
+  const { colors } = useAppearance();
+  const { t } = useLocale();
+  const styles = createStyles(colors);
+
+  return (
+    <Pressable
+      accessibilityLabel={t('premium.next.cta')}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.premiumPrompt, pressed && styles.pressed]}>
+      <View style={styles.premiumPromptHeader}>
+        <View style={styles.premiumPromptIcon}>
+          <Ionicons color={colors.ink} name="lock-open-outline" size={21} />
+        </View>
+        <View style={styles.premiumPromptCopy}>
+          <Text style={styles.premiumPromptEyebrow}>
+            {t(syncing ? 'premium.next.syncEyebrow' : 'premium.next.eyebrow')}
+          </Text>
+          <Text style={styles.premiumPromptTitle}>
+            {t(syncing ? 'premium.next.syncTitle' : 'premium.next.title')}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.premiumPromptBody}>
+        {t(syncing ? 'premium.next.syncBody' : 'premium.next.body')}
+      </Text>
+      <View style={styles.premiumPromptAction}>
+        <Text style={styles.premiumPromptActionText}>
+          {t(syncing ? 'premium.next.syncCta' : 'premium.next.cta')}
+        </Text>
+        <Ionicons color={colors.white} name="arrow-forward" size={18} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -542,6 +641,60 @@ const createStyles = (colors: SemanticColors) => StyleSheet.create({
     color: colors.white,
     fontFamily: fonts.bodyBold,
     fontSize: 11,
+  },
+  premiumPrompt: {
+    backgroundColor: colors.ink,
+    borderRadius: 24,
+    gap: 15,
+    marginTop: 4,
+    padding: 18,
+  },
+  premiumPromptHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  premiumPromptIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.reward,
+    borderRadius: 20,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  premiumPromptCopy: { flex: 1, gap: 3 },
+  premiumPromptEyebrow: {
+    color: colors.reward,
+    fontFamily: fonts.bodyBold,
+    fontSize: 9,
+    letterSpacing: 0.65,
+  },
+  premiumPromptTitle: {
+    color: colors.background,
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 20,
+    letterSpacing: -0.25,
+    lineHeight: 24,
+  },
+  premiumPromptBody: {
+    color: colors.background,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  premiumPromptAction: {
+    alignItems: 'center',
+    backgroundColor: colors.action,
+    borderRadius: radii.full,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  premiumPromptActionText: {
+    color: colors.white,
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
   },
   pressed: { opacity: 0.7 },
 });

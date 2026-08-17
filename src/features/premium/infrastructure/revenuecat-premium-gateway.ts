@@ -66,7 +66,7 @@ export class RevenueCatPremiumGateway implements PremiumGateway {
     }
 
     if (!this.configured) {
-      await Purchases.setLogLevel(LOG_LEVEL.ERROR);
+      await Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.ERROR);
       Purchases.configure({ apiKey, appUserID: userId });
       this.configured = true;
       return;

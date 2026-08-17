@@ -70,6 +70,15 @@ function parseState(value: unknown): PremiumAccessState {
 export class SupabasePremiumAccessRepository implements PremiumAccessRepository {
   constructor(private readonly client: PomeloSupabaseClient) {}
 
+  async sync() {
+    const { error } = await this.client.functions.invoke('revenuecat-sync', {
+      body: {},
+    });
+    if (error) {
+      throw new PremiumError('network');
+    }
+  }
+
   async getState() {
     const { data, error } = await this.client.rpc('get_premium_state');
     if (error) {

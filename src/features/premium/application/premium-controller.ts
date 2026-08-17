@@ -41,6 +41,7 @@ export type PremiumStoreState = {
 export type PremiumErrorCode =
   | 'configuration'
   | 'network'
+  | 'purchaseNotActivated'
   | 'unexpected'
   | 'unavailable';
 
@@ -64,6 +65,7 @@ export interface PremiumGateway {
 
 export interface PremiumAccessRepository {
   getState(): Promise<PremiumAccessState>;
+  sync?(): Promise<void>;
 }
 
 const initialSnapshot: PremiumSnapshot = {
@@ -113,7 +115,7 @@ export class PremiumController {
 
     try {
       await this.gateway.configure(userId);
-      await this.loadState(operation);
+      await this.loadAndSyncState(operation);
     } catch (error) {
       if (operation !== this.operation) {
         return;
@@ -130,7 +132,7 @@ export class PremiumController {
     this.update({ busy: true, error: null, status: 'loading' });
 
     try {
-      await this.loadState(operation);
+      await this.loadAndSyncState(operation);
     } catch (error) {
       if (operation === this.operation) {
         this.update({ busy: false, error: errorCode(error), status: 'error' });
@@ -139,11 +141,11 @@ export class PremiumController {
   }
 
   async purchase(plan: PremiumPlanId) {
-    if (
-      this.snapshot.busy ||
-      this.snapshot.access === 'premium' ||
-      !this.snapshot.offers.some((offer) => offer.plan === plan)
-    ) {
+    if (this.snapshot.busy || this.snapshot.access === 'premium') {
+      return;
+    }
+    if (!this.snapshot.offers.some((offer) => offer.plan === plan)) {
+      this.update({ error: 'unavailable' });
       return;
     }
 
@@ -151,7 +153,11 @@ export class PremiumController {
     this.update({ busy: true, error: null });
     try {
       const storeEntitled = await this.gateway.purchase(plan);
-      await this.loadState(operation, storeEntitled);
+      this.update({ storeEntitled });
+      await this.syncStoreAccess(operation, storeEntitled);
+      if (operation === this.operation && !storeEntitled) {
+        this.update({ error: 'purchaseNotActivated' });
+      }
     } catch (error) {
       if (operation === this.operation) {
         this.update({ busy: false, error: errorCode(error) });
@@ -168,7 +174,8 @@ export class PremiumController {
     this.update({ busy: true, error: null });
     try {
       const storeEntitled = await this.gateway.restore();
-      await this.loadState(operation, storeEntitled);
+      this.update({ storeEntitled });
+      await this.syncStoreAccess(operation, storeEntitled);
     } catch (error) {
       if (operation === this.operation) {
         this.update({ busy: false, error: errorCode(error) });
@@ -187,6 +194,23 @@ export class PremiumController {
     } finally {
       this.snapshot = initialSnapshot;
       this.emit();
+    }
+  }
+
+  private async syncStoreAccess(operation: number, storeEntitled: boolean) {
+    if (storeEntitled && this.accessRepository.sync) {
+      try {
+        await this.accessRepository.sync();
+      } catch {
+      }
+    }
+    await this.loadState(operation, storeEntitled);
+  }
+
+  private async loadAndSyncState(operation: number) {
+    await this.loadState(operation);
+    if (operation === this.operation && this.snapshot.storeEntitled && this.snapshot.access !== 'premium') {
+      await this.syncStoreAccess(operation, true);
     }
   }
 

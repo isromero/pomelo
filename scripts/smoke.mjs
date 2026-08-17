@@ -375,6 +375,16 @@ async function runPairSmoke({ apiUrl, publishableKey, serverKey }) {
       throw historyError;
     }
     assert(history?.length === 1, 'History did not contain exactly one revealed Memory.');
+    const { data: partnerHistory, error: partnerHistoryError } = await partner.rpc(
+      'get_memory_history',
+    );
+    if (partnerHistoryError) {
+      throw partnerHistoryError;
+    }
+    assert(
+      partnerHistory?.length === 1,
+      'The partner could not read the first Memory without Premium.',
+    );
 
     const { data: retryReveal, error: retryRevealError } = await creator.rpc('reveal_moment', {
       target_moment_id: creatorMoment.id,

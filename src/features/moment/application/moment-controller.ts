@@ -1,7 +1,10 @@
 import {
+  validatePhotoDraft,
   validateQuestionResponse,
   type DailyMoment,
   type Memory,
+  type PhotoDraft,
+  type QuestionPrompt,
   type QuestionResponse,
 } from '@/features/moment/domain/moment';
 
@@ -18,6 +21,7 @@ export type MomentErrorCode =
   | 'notAllowed'
   | 'pairNotActive'
   | 'pairNotReady'
+  | 'photoIncomplete'
   | 'premiumRequired'
   | 'promptUnavailable'
   | 'unexpected';
@@ -33,6 +37,9 @@ export interface MomentRepository {
   getHistory(): Promise<Memory[]>;
   revealMoment(momentId: string): Promise<DailyMoment>;
   submitQuestion(momentId: string, response: QuestionResponse): Promise<DailyMoment>;
+  submitPhoto?(momentId: string, draft: PhotoDraft, submissionKey: string): Promise<DailyMoment>;
+  setMemoryWidgetVisibility?(memoryId: string, enabled: boolean): Promise<boolean>;
+  createPrivateMediaUrl?(path: string): Promise<string>;
   subscribe(listener: () => void): () => void;
 }
 
@@ -40,6 +47,12 @@ export interface MomentDraftStore {
   get(momentId: string): Promise<QuestionResponse | null>;
   remove(momentId: string): Promise<void>;
   save(momentId: string, response: QuestionResponse): Promise<void>;
+}
+
+export interface PhotoDraftStore {
+  get(momentId: string): Promise<PhotoDraft | null>;
+  remove(momentId: string): Promise<void>;
+  save(momentId: string, draft: PhotoDraft): Promise<PhotoDraft>;
 }
 
 type MomentControllerStatus = 'error' | 'idle' | 'loading' | 'ready';
@@ -50,6 +63,7 @@ export type MomentSnapshot = {
   error: MomentErrorCode | null;
   history: Memory[];
   moment: DailyMoment | null;
+  photoDraft: PhotoDraft | null;
   syncPending: boolean;
   status: MomentControllerStatus;
 };
@@ -60,12 +74,19 @@ const emptyDraftStore: MomentDraftStore = {
   save: async () => {},
 };
 
+const emptyPhotoDraftStore: PhotoDraftStore = {
+  get: async () => null,
+  remove: async () => {},
+  save: async (_momentId, draft) => draft,
+};
+
 const initialSnapshot: MomentSnapshot = {
   busy: false,
   draft: null,
   error: null,
   history: [],
   moment: null,
+  photoDraft: null,
   syncPending: false,
   status: 'idle',
 };
@@ -79,11 +100,13 @@ export class MomentController {
   private operation = 0;
   private refreshRequest = 0;
   private snapshot = initialSnapshot;
+  private photoSubmissionKeys = new Map<string, string>();
   private unsubscribeRepository: (() => void) | null = null;
 
   constructor(
     private readonly repository: MomentRepository,
     private readonly draftStore: MomentDraftStore = emptyDraftStore,
+    private readonly photoDraftStore: PhotoDraftStore = emptyPhotoDraftStore,
   ) {}
 
   getSnapshot = () => this.snapshot;
@@ -107,6 +130,7 @@ export class MomentController {
     this.operation += 1;
     this.unsubscribeRepository?.();
     this.unsubscribeRepository = null;
+    this.photoSubmissionKeys.clear();
     this.snapshot = initialSnapshot;
     this.emit();
   }
@@ -140,18 +164,23 @@ export class MomentController {
     }
 
     if (momentResult.status === 'fulfilled') {
-      const draft = momentResult.value.ownContribution
+      const draft = momentResult.value.ownContribution || momentResult.value.format !== 'question'
         ? null
         : await this.readDraft(momentResult.value.id);
+      const photoDraft = momentResult.value.ownContribution || momentResult.value.format !== 'photo'
+        ? null
+        : await this.readPhotoDraft(momentResult.value.id);
       if (momentResult.value.ownContribution) {
         void this.removePersistedDraft(momentResult.value.id);
+        void this.removePersistedPhotoDraft(momentResult.value.id);
       }
       this.update({
         draft,
         error: null,
         history: historyResult.value,
         moment: momentResult.value,
-        syncPending: draft !== null,
+        photoDraft,
+        syncPending: draft !== null || photoDraft !== null,
         status: 'ready',
       });
       return;
@@ -164,6 +193,7 @@ export class MomentController {
         error: dailyError,
         history: historyResult.value,
         moment: null,
+        photoDraft: null,
         syncPending: false,
         status: 'ready',
       });
@@ -184,7 +214,11 @@ export class MomentController {
       return;
     }
 
-    const validationError = validateQuestionResponse(moment.prompt, response);
+    if (moment.format !== 'question') {
+      this.update({ error: 'invalidFormat' });
+      return;
+    }
+    const validationError = validateQuestionResponse(moment.prompt as QuestionPrompt, response);
     if (validationError) {
       this.update({ error: 'invalidResponse' });
       return;
@@ -223,6 +257,57 @@ export class MomentController {
     });
   }
 
+  async savePhotoDraft(photoDraft: PhotoDraft) {
+    const moment = this.snapshot.moment;
+    if (!moment || moment.format !== 'photo' || moment.ownContribution || moment.status === 'expired_incomplete') {
+      return;
+    }
+    const hasCapture = Boolean(photoDraft.rear || photoDraft.front);
+    if (!hasCapture) {
+      await this.removePersistedPhotoDraft(moment.id);
+      this.update({ error: null, photoDraft: null, syncPending: false });
+      return;
+    }
+    const persisted = await this.persistPhotoDraft(moment.id, photoDraft);
+    this.update({
+      error: persisted ? null : 'draftStorage',
+      photoDraft: persisted ?? photoDraft,
+      syncPending: persisted !== null,
+    });
+  }
+
+  async submitPhoto() {
+    const moment = this.snapshot.moment;
+    const photoDraft = this.snapshot.photoDraft;
+    if (!moment) {
+      this.update({ error: 'momentNotFound' });
+      return;
+    }
+    const validationError = validatePhotoDraft(photoDraft);
+    if (moment.format !== 'photo' || !photoDraft || validationError) {
+      this.update({ error: 'photoIncomplete' });
+      return;
+    }
+    const persisted = await this.persistPhotoDraft(moment.id, photoDraft);
+    if (!persisted) {
+      this.update({ error: 'draftStorage', photoDraft, syncPending: false });
+      return;
+    }
+    const submissionKey = this.photoSubmissionKeys.get(moment.id) ?? createClientId();
+    this.photoSubmissionKeys.set(moment.id, submissionKey);
+    this.update({ error: null, photoDraft: persisted, syncPending: true });
+    await this.runMomentOperation(async () => {
+      if (!this.repository.submitPhoto) {
+        throw new MomentError('configuration');
+      }
+      const submitted = await this.repository.submitPhoto(moment.id, persisted, submissionKey);
+      this.photoSubmissionKeys.delete(moment.id);
+      await this.removePersistedPhotoDraft(moment.id);
+      this.update({ photoDraft: null, syncPending: false });
+      return submitted;
+    });
+  }
+
   async revealMoment() {
     const moment = this.snapshot.moment;
     if (!moment) {
@@ -230,11 +315,39 @@ export class MomentController {
       return;
     }
     await this.runMomentOperation(async () => {
-      const revealed = await this.repository.revealMoment(moment.id);
-      const history = await this.repository.getHistory();
-      this.update({ history, moment: revealed });
-      return revealed;
+      await this.repository.revealMoment(moment.id);
+      await this.refresh();
+      return this.snapshot.moment ?? moment;
     });
+  }
+
+  acceptExternalMoment(moment: DailyMoment) {
+    this.update({ error: null, moment, status: 'ready' });
+  }
+
+  async setMemoryWidgetVisibility(memoryId: string, enabled: boolean) {
+    if (!this.repository.setMemoryWidgetVisibility) {
+      this.update({ error: 'configuration' });
+      return;
+    }
+    try {
+      const value = await this.repository.setMemoryWidgetVisibility(memoryId, enabled);
+      this.update({
+        error: null,
+        history: this.snapshot.history.map((memory) =>
+          memory.id === memoryId ? { ...memory, widgetVisualEnabled: value } : memory,
+        ),
+      });
+    } catch (error) {
+      this.update({ error: errorCode(error) });
+    }
+  }
+
+  async createPrivateMediaUrl(path: string) {
+    if (!this.repository.createPrivateMediaUrl) {
+      throw new MomentError('configuration');
+    }
+    return this.repository.createPrivateMediaUrl(path);
   }
 
   private async runMomentOperation(operation: () => Promise<DailyMoment>) {
@@ -260,6 +373,14 @@ export class MomentController {
     }
   }
 
+  private async readPhotoDraft(momentId: string) {
+    try {
+      return await this.photoDraftStore.get(momentId);
+    } catch {
+      return null;
+    }
+  }
+
   private async persistDraft(momentId: string, response: QuestionResponse) {
     try {
       await this.draftStore.save(momentId, response);
@@ -277,6 +398,22 @@ export class MomentController {
     }
   }
 
+  private async persistPhotoDraft(momentId: string, photoDraft: PhotoDraft) {
+    try {
+      return await this.photoDraftStore.save(momentId, photoDraft);
+    } catch {
+      return null;
+    }
+  }
+
+  private async removePersistedPhotoDraft(momentId: string) {
+    try {
+      await this.photoDraftStore.remove(momentId);
+    } catch {
+      return;
+    }
+  }
+
   private update(patch: Partial<MomentSnapshot>) {
     this.snapshot = { ...this.snapshot, ...patch };
     this.emit();
@@ -285,4 +422,11 @@ export class MomentController {
   private emit() {
     this.listeners.forEach((listener) => listener());
   }
+}
+
+function createClientId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `photo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }

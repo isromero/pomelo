@@ -46,6 +46,21 @@ export function PremiumProvider({ children }: PropsWithChildren) {
     };
   }, [runtime, user?.id]);
 
+  useEffect(() => {
+    if (!client || !user?.id) {
+      return undefined;
+    }
+    const channel = client
+      .channel(`premium-user:${user.id}`)
+      .on('broadcast', { event: 'premium-updated' }, () => {
+        void runtime.controller.refresh();
+      })
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [client, runtime, user?.id]);
+
   useEffect(() => () => {
     void runtime.controller.stop();
   }, [runtime]);
