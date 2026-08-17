@@ -31,6 +31,8 @@ function applicationError(value: unknown) {
     case 'pair_not_active':
     case 'pair_not_ready':
       return new DevelopmentToolsError('notAllowed');
+    case 'prompt_unavailable':
+      return new DevelopmentToolsError('promptUnavailable');
     default:
       return error ? new DevelopmentToolsError('unexpected') : null;
   }

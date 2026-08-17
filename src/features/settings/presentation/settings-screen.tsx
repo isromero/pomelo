@@ -43,6 +43,8 @@ function errorKey(error: DevelopmentToolsErrorCode): TranslationKey {
       return 'settings.develop.error.momentInProgress';
     case 'notAllowed':
       return 'settings.develop.error.notAllowed';
+    case 'promptUnavailable':
+      return 'settings.develop.error.promptUnavailable';
     case 'network':
       return 'settings.develop.error.network';
     default:

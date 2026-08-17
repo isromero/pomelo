@@ -11,6 +11,7 @@ export type DevelopmentToolsErrorCode =
   | 'momentInProgress'
   | 'network'
   | 'notAllowed'
+  | 'promptUnavailable'
   | 'unexpected';
 
 export class DevelopmentToolsError extends Error {
