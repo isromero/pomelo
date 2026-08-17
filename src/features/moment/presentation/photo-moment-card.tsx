@@ -30,6 +30,7 @@ type PhotoMomentCardProps = {
   onDraftChange(draft: PhotoDraft): void;
   onReveal(): void;
   onSubmit(): void;
+  onUseTestPhotos(): Promise<void>;
   photoDraft: PhotoDraft | null;
   syncPending: boolean;
 };
@@ -232,6 +233,7 @@ export function PhotoMomentCard({
   onDraftChange,
   onReveal,
   onSubmit,
+  onUseTestPhotos,
   photoDraft,
   syncPending,
 }: PhotoMomentCardProps) {
@@ -242,6 +244,25 @@ export function PhotoMomentCard({
   const submitted = moment.ownContribution !== null;
   const revealed = moment.status === 'revealed';
   const ready = moment.status === 'ready';
+  const [testPhotosBusy, setTestPhotosBusy] = useState(false);
+  const [testPhotosError, setTestPhotosError] = useState(false);
+
+  const fillTestPhotos = async () => {
+    if (testPhotosBusy || busy) {
+      return;
+    }
+    setTestPhotosBusy(true);
+    setTestPhotosError(false);
+    try {
+      await onUseTestPhotos();
+    } catch {
+      setTestPhotosError(true);
+    } finally {
+      setTestPhotosBusy(false);
+    }
+  };
+
+  const formBusy = busy || testPhotosBusy;
 
   return (
     <View style={styles.card}>
@@ -256,15 +277,27 @@ export function PhotoMomentCard({
       {!submitted ? (
         <>
           <Text style={styles.helper}>{t('moment.photo.sequence')}</Text>
-          <PhotoCapturePanel disabled={busy} draft={draft} onChange={onDraftChange} />
+          {__DEV__ ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={formBusy}
+              onPress={() => void fillTestPhotos()}
+              style={[styles.testPhotosAction, formBusy && styles.disabled]}>
+              <Text style={styles.testPhotosActionText}>
+                {testPhotosBusy ? t('moment.photo.devFilling') : t('moment.photo.devFill')}
+              </Text>
+            </Pressable>
+          ) : null}
+          <PhotoCapturePanel disabled={formBusy} draft={draft} onChange={onDraftChange} />
           {syncPending ? <Text style={styles.sync}>{t('moment.syncPending')}</Text> : null}
           <Pressable
             accessibilityRole="button"
-            disabled={busy || !isPhotoDraftComplete(draft)}
+            disabled={formBusy || !isPhotoDraftComplete(draft)}
             onPress={onSubmit}
-            style={[styles.primaryAction, (busy || !isPhotoDraftComplete(draft)) && styles.disabled]}>
+            style={[styles.primaryAction, (formBusy || !isPhotoDraftComplete(draft)) && styles.disabled]}>
             <Text style={styles.primaryActionText}>{t('moment.photo.submit')}</Text>
           </Pressable>
+          {testPhotosError ? <Text style={styles.error}>{t('moment.photo.devError')}</Text> : null}
         </>
       ) : (
         <View style={styles.waitingPanel}>
@@ -312,6 +345,8 @@ const createStyles = (colors: SemanticColors) =>
     promptLabel: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 0.6 },
     prompt: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 21, lineHeight: 26 },
     helper: { color: colors.inkSecondary, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
+    testPhotosAction: { alignSelf: 'flex-start', borderColor: colors.action, borderRadius: radii.full, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
+    testPhotosActionText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10 },
     captureGrid: { flexDirection: 'row', gap: 10 },
     captureCard: { backgroundColor: colors.backgroundRaised, borderRadius: 18, flex: 1, overflow: 'hidden' },
     capturePreview: { aspectRatio: 0.78, width: '100%' },

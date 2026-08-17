@@ -23,6 +23,7 @@ import {
   type DailyMoment,
   type Memory,
 } from '@/features/moment/domain/moment';
+import { createDevelopmentPhotoDraft } from '@/features/moment/infrastructure/development-test-photos';
 import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
 import { useDoodleMoment, useMoment } from '@/features/moment/moment-api';
 import type { PairStatus } from '@/features/pair/application/pair-controller';
@@ -282,6 +283,10 @@ export function HomeScreen({
                 key={displayMoment.id}
                 moment={displayMoment}
                 onPhotoDraftChange={(draft) => void momentRuntime.controller.savePhotoDraft(draft)}
+                onUseTestPhotos={async () => {
+                  const draft = await createDevelopmentPhotoDraft(displayMoment.id);
+                  await momentRuntime.controller.savePhotoDraft(draft);
+                }}
                 onPhotoSubmit={() => void momentRuntime.controller.submitPhoto()}
                 onReveal={() => void revealMoment()}
                 onDraftChange={(draft) => void momentRuntime.controller.saveDraft(draft)}

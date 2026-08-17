@@ -29,6 +29,7 @@ type DailyMomentCardProps = {
   moment: DailyMoment;
   onDraftChange(response: QuestionResponse): void;
   onPhotoDraftChange(draft: PhotoDraft): void;
+  onUseTestPhotos(): Promise<void>;
   onPhotoSubmit(): void;
   onReveal(): void;
   onSubmit(response: QuestionResponse): void;
@@ -122,6 +123,7 @@ export function DailyMomentCard(props: DailyMomentCardProps) {
         onDraftChange={props.onPhotoDraftChange}
         onReveal={props.onReveal}
         onSubmit={props.onPhotoSubmit}
+        onUseTestPhotos={props.onUseTestPhotos}
         photoDraft={props.photoDraft}
         syncPending={props.syncPending}
       />
