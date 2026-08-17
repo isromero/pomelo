@@ -27,6 +27,8 @@ Hacer que el ritual diario vuelva a llamar a cada miembro en el momento correcto
 - [ ] El User puede silenciar recordatorios sin desactivar notificaciones transaccionales imprescindibles y puede reactivarlos.
 - [ ] Reintentos, dos dispositivos del mismo User y eventos duplicados no producen una ráfaga de avisos repetidos.
 - [ ] Pruebas deterministas cubren calendario y zonas horarias; pruebas en dispositivo real cubren recepción y deep links en iOS y Android.
+- [ ] Crear, editar, eliminar o repetir una Journal Entry futura programa, reprograma o cancela su aviso para ambos miembros sin duplicados.
+- [ ] El aviso de Journal Entry respeta fecha civil, hora opcional, zona horaria y Locale del destinatario, y abre su detalle dentro de Diary.
 
 ## Blocked by
 
@@ -34,3 +36,12 @@ Hacer que el ritual diario vuelva a llamar a cada miembro en el momento correcto
 - [07 - Thread de conversación dentro de una Memory](07-thread-de-memory.md)
 
 ## Comments
+
+### 2026-08-17 - Próximos planes de Diary
+
+- ADR-0010 añade avisos para Journal Entries futuras. La cadencia exacta se decidirá dentro de este issue; el slice de Diary solo entrega fechas, recurrencia y deep-link target.
+
+### 2026-08-17 - Estado de implementación
+
+- Diary ya expone fecha civil, rango, hora opcional, zona horaria, recurrencia anual y el deep link `pomelo://diary?entryId=...` que necesitará el scheduler.
+- No se han implementado todavía programación, reprogramación, cancelación ni entrega de notificaciones para Journal Entries; permanecen dentro del alcance de este issue.

@@ -45,3 +45,8 @@ Completar la internacionalización y apariencia del MVP como comportamientos de 
 - [19 - Ajustes, privacidad y flujos destructivos completos](19-ajustes-privacidad-y-eliminacion.md)
 
 ## Comments
+
+### 2026-08-17 - Diary añadido a la matriz de superficies
+
+- Diary, Calendar, Map, editor, selector de ubicación, errores y Thread tienen catálogos ES/EN y consumen tokens semánticos claro/oscuro.
+- Se verificaron exports web/iOS/Android y los tests existentes de catálogos; la matriz visual completa ES/EN x light/dark, accesibilidad y widgets queda pendiente del issue.

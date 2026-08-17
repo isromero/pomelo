@@ -10,13 +10,6 @@ import {
   type PairState,
   type PairStatus,
 } from '@/features/pair/application/pair-controller';
-import {
-  importantDateKinds,
-  importantDateRecurrences,
-  type ImportantDate,
-  type ImportantDateInput,
-  type NextImportantDate,
-} from '@/features/pair/domain/important-date';
 import type { PomeloSupabaseClient } from '@/lib/supabase';
 
 type JsonObject = Record<string, unknown>;
@@ -27,9 +20,7 @@ const errorCodes: Record<string, PairErrorCode> = {
   invitation_expired: 'invitationExpired',
   invitation_invalid: 'invitationInvalid',
   invitation_used: 'invitationUsed',
-  invalid_important_date: 'invalidImportantDate',
   invalid_anniversary: 'invalidAnniversary',
-  important_date_not_found: 'importantDateNotFound',
   not_allowed: 'notAllowed',
   pair_full: 'pairFull',
   profile_incomplete: 'profileIncomplete',
@@ -51,12 +42,6 @@ const previewStatuses = new Set<InvitationPreviewStatus>([
   'valid',
 ]);
 const avatarKeys = new Set(['affectionate', 'calm', 'surprised']);
-const nextImportantDateKinds = new Set([
-  'anniversary',
-  'birthday',
-  ...importantDateKinds,
-]);
-const nextImportantDateRecurrences: ReadonlySet<string> = new Set(importantDateRecurrences);
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -82,76 +67,6 @@ function repositoryError(error: { message?: string } | null) {
   return new PairError(
     message.includes('fetch') || message.includes('network') ? 'network' : 'unexpected',
   );
-}
-
-function parseImportantDate(value: unknown): ImportantDate {
-  if (!isObject(value)) {
-    throw new PairError('unexpected');
-  }
-  const id = stringValue(value.id);
-  const pairId = stringValue(value.pairId);
-  const kind = stringValue(value.kind);
-  const name = stringValue(value.name);
-  const date = stringValue(value.date);
-  const recurrence = stringValue(value.recurrence);
-  if (
-    !id ||
-    !pairId ||
-    !kind ||
-    !importantDateKinds.includes(kind as ImportantDateInput['kind']) ||
-    !name ||
-    !date ||
-    !recurrence ||
-    !importantDateRecurrences.includes(recurrence as ImportantDateInput['recurrence'])
-  ) {
-    throw new PairError('unexpected');
-  }
-  return {
-    date,
-    id,
-    kind: kind as ImportantDate['kind'],
-    name,
-    pairId,
-    recurrence: recurrence as ImportantDate['recurrence'],
-  };
-}
-
-function parseNextImportantDate(value: unknown): NextImportantDate | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (!isObject(value)) {
-    throw new PairError('unexpected');
-  }
-  const id = stringValue(value.id);
-  const date = stringValue(value.date);
-  const name = stringValue(value.name);
-  const kind = stringValue(value.kind);
-  const recurrence = stringValue(value.recurrence);
-  const daysRemaining = value.daysRemaining;
-  const ownerUserId = value.ownerUserId;
-  if (
-    !id ||
-    !date ||
-    name === null ||
-    !kind ||
-    !recurrence ||
-    !nextImportantDateKinds.has(kind) ||
-    !nextImportantDateRecurrences.has(recurrence) ||
-    typeof daysRemaining !== 'number' ||
-    (ownerUserId !== null && typeof ownerUserId !== 'string')
-  ) {
-    throw new PairError('unexpected');
-  }
-  return {
-    date,
-    daysRemaining,
-    id,
-    kind: kind as NextImportantDate['kind'],
-    name,
-    ownerUserId,
-    recurrence: recurrence as NextImportantDate['recurrence'],
-  };
 }
 
 function parseState(value: unknown): PairState {
@@ -230,16 +145,11 @@ function parseState(value: unknown): PairState {
     };
   }
 
-  const importantDates = Array.isArray(value.importantDates)
-    ? value.importantDates.map(parseImportantDate)
-    : [];
   return {
     anniversary,
     id,
-    importantDates,
     invitation,
     members,
-    nextImportantDate: parseNextImportantDate(value.nextImportantDate),
     status,
     timeZone,
   };
@@ -318,43 +228,6 @@ export class SupabasePairRepository implements PairRepository {
     return this.stateResult(data, error);
   }
 
-  async createImportantDate(input: ImportantDateInput) {
-    const { data, error } = await this.client.rpc('create_important_date', {
-      date_kind: input.kind,
-      date_name: input.name,
-      date_recurrence: input.recurrence,
-      date_value: input.date,
-    });
-    return this.stateResult(data, error);
-  }
-
-  async updateImportantDate(id: string, input: ImportantDateInput) {
-    const { data, error } = await this.client.rpc('update_important_date', {
-      date_kind: input.kind,
-      date_name: input.name,
-      date_recurrence: input.recurrence,
-      date_value: input.date,
-      target_date_id: id,
-    });
-    return this.stateResult(data, error);
-  }
-
-  async deleteImportantDate(id: string) {
-    const { data, error } = await this.client.rpc('delete_important_date', {
-      target_date_id: id,
-    });
-    return this.stateResult(data, error);
-  }
-
-  async getImportantDateWidget() {
-    const { data, error } = await this.client.rpc('get_important_date_widget');
-    const failure = repositoryError(error);
-    if (failure) {
-      throw failure;
-    }
-    return parseNextImportantDate(data);
-  }
-
   subscribe(listener: () => void) {
     const channel = this.client
       .channel('pair-state')
@@ -366,11 +239,6 @@ export class SupabasePairRepository implements PairRepository {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pair_invitations' },
-        listener,
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'important_dates' },
         listener,
       )
       .subscribe((status) => {

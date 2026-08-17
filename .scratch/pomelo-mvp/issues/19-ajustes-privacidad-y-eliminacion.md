@@ -40,3 +40,10 @@ Cerrar todos los controles de cuenta, Pair, Premium, permisos y datos para que e
 - [15 - Widget Family equivalente en Android](15-widget-family-android.md)
 
 ## Comments
+
+### 2026-08-17 - Controles de Diary entregados parcialmente
+
+- La migración de Diary aplica RLS de Pair a Journal Entries, coordenadas y media; las coordenadas no salen en accesos de terceros.
+- Una Journal Entry puede editarse por cualquiera de los dos miembros con control de versión, eliminarse de forma idempotente y retirar su ubicación o media privada.
+- Las fotos se cargan al bucket privado, se sirven con URLs firmadas temporales y la eliminación revoca el registro y el objeto asociado.
+- Logout, Settings completo, limpieza de widgets/notificaciones y los flujos destructivos globales de cuenta siguen pendientes de este issue.

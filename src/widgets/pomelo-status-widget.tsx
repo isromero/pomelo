@@ -11,8 +11,10 @@ import { createWidget, WidgetEnvironment } from 'expo-widgets';
 import { widgetColors } from '@/constants/pomelo-theme';
 
 export type PomeloStatusWidgetProps = {
+  accessoryLabel?: string;
   action: string;
   title: string;
+  url?: string;
 };
 
 function PomeloStatusWidget(
@@ -26,7 +28,7 @@ function PomeloStatusWidget(
       alignment="leading"
       modifiers={[
         padding({ all: 16 }),
-        widgetURL('pomelo://widget'),
+        widgetURL(props.url ?? 'pomelo://widget'),
         containerBackground(colors.background, 'widget'),
       ]}
       spacing={8}>
@@ -36,6 +38,11 @@ function PomeloStatusWidget(
       <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(colors.action)]}>
         {props.action}
       </Text>
+      {props.accessoryLabel ? (
+        <Text modifiers={[font({ size: 11, weight: 'medium' }), foregroundStyle(colors.title)]}>
+          {props.accessoryLabel}
+        </Text>
+      ) : null}
     </VStack>
   );
 }

@@ -61,7 +61,7 @@ npx eas-cli build --profile development-simulator --platform ios
 npx eas-cli build --profile development --platform android
 ```
 
-Native dependency or app configuration changes require a new development build. The generated `ios/` and `android/` folders are intentionally ignored; Expo Continuous Native Generation recreates them from `app.json` and the versioned config plugin.
+Native dependency or app configuration changes require a new development build. The generated `ios/` and `android/` folders are intentionally ignored; Expo Continuous Native Generation recreates them from `app.config.js`, `app.json`, and the versioned config plugin. Android map builds require a restricted `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`.
 
 ## Account and Profile
 

@@ -13,6 +13,7 @@ export type MomentErrorCode =
   | 'configuration'
   | 'draftStorage'
   | 'invalidFormat'
+  | 'invalidLocation'
   | 'invalidResponse'
   | 'momentClosed'
   | 'momentNotFound'
@@ -39,6 +40,7 @@ export interface MomentRepository {
   submitQuestion(momentId: string, response: QuestionResponse): Promise<DailyMoment>;
   submitPhoto?(momentId: string, draft: PhotoDraft, submissionKey: string): Promise<DailyMoment>;
   setMemoryWidgetVisibility?(memoryId: string, enabled: boolean): Promise<boolean>;
+  removeOwnContribution?(contributionId: string): Promise<Memory>;
   createPrivateMediaUrl?(path: string): Promise<string>;
   subscribe(listener: () => void): () => void;
 }
@@ -343,6 +345,19 @@ export class MomentController {
     }
   }
 
+  async removeOwnContribution(contributionId: string) {
+    if (!this.repository.removeOwnContribution) {
+      this.update({ error: 'configuration' });
+      return;
+    }
+    try {
+      const memory = await this.repository.removeOwnContribution(contributionId);
+      this.acceptMemory(memory);
+    } catch (error) {
+      this.update({ error: errorCode(error) });
+    }
+  }
+
   async createPrivateMediaUrl(path: string) {
     if (!this.repository.createPrivateMediaUrl) {
       throw new MomentError('configuration');
@@ -371,6 +386,14 @@ export class MomentController {
     } catch {
       return null;
     }
+  }
+
+  private acceptMemory(memory: Memory) {
+    const history = this.snapshot.history.map((item) => item.id === memory.id ? memory : item);
+    this.update({
+      error: null,
+      history,
+    });
   }
 
   private async readPhotoDraft(momentId: string) {

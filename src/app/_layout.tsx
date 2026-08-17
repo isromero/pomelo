@@ -22,6 +22,8 @@ import {
   useAccountClient,
 } from '@/features/account/presentation/account-provider';
 import { MomentProvider } from '@/features/moment/moment-api';
+import { JournalProvider } from '@/features/journal/journal-api';
+import { PomProgressProvider } from '@/features/pom/pom-api';
 import { PairProvider, usePair } from '@/features/pair/presentation/pair-provider';
 import { PremiumProvider } from '@/features/premium/presentation/premium-provider';
 import { LocaleProvider, useLocale } from '@/localization/locale-provider';
@@ -56,9 +58,13 @@ export default function RootLayout() {
           <PremiumProvider>
             <LocaleRuntime>
               <PairRuntime>
-                <MomentRuntime>
-                  <RootNavigator />
-                </MomentRuntime>
+                <PomProgressRuntime>
+                  <MomentRuntime>
+                    <JournalRuntime>
+                      <RootNavigator />
+                    </JournalRuntime>
+                  </MomentRuntime>
+                </PomProgressRuntime>
               </PairRuntime>
             </LocaleRuntime>
           </PremiumProvider>
@@ -66,6 +72,15 @@ export default function RootLayout() {
       </AppearanceProvider>
     </LocaleProvider>
   );
+}
+
+function JournalRuntime({ children }: PropsWithChildren) {
+  const client = useAccountClient();
+  const { status } = useAccount();
+  const pair = usePair();
+  const active = status === 'ready' && pair.status === 'ready'
+    && (pair.state?.status === 'active' || pair.state?.status === 'archived');
+  return <JournalProvider active={active} client={client}>{children}</JournalProvider>;
 }
 
 function LocaleRuntime({ children }: PropsWithChildren) {
@@ -121,5 +136,21 @@ function MomentRuntime({ children }: PropsWithChildren) {
     <MomentProvider active={active} client={client}>
       {children}
     </MomentProvider>
+  );
+}
+
+function PomProgressRuntime({ children }: PropsWithChildren) {
+  const client = useAccountClient();
+  const { status } = useAccount();
+  const pair = usePair();
+  const active =
+    status === 'ready' &&
+    pair.status === 'ready' &&
+    (pair.state?.status === 'active' || pair.state?.status === 'archived');
+
+  return (
+    <PomProgressProvider active={active} client={client}>
+      {children}
+    </PomProgressProvider>
   );
 }

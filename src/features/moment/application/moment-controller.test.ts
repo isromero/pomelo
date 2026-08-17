@@ -4,10 +4,7 @@ import {
   type MomentDraftStore,
   type MomentRepository,
 } from '@/features/moment/application/moment-controller';
-import type {
-  DailyMoment,
-  Memory,
-} from '@/features/moment/domain/moment';
+import type { DailyMoment, Memory } from '@/features/moment/domain/moment';
 
 const prompt = {
   conceptKey: 'small_gesture_smile',

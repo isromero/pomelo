@@ -23,7 +23,7 @@ export function EmptyAppSectionScreen({
   title,
   waitingForPartner,
 }: {
-  activeTab: Extract<TabKey, 'history' | 'map'>;
+  activeTab: Extract<TabKey, 'diary'>;
   body: TranslationKey;
   eyebrow: TranslationKey;
   icon: keyof typeof Ionicons.glyphMap;

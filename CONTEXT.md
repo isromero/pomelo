@@ -48,19 +48,31 @@ The transition that makes a completed Moment visible to both members. Either mem
 
 ### Memory
 
-The durable result created automatically by Reveal. A Memory contains the original Prompt, available Contributions, date, optional approximate city, and Pom reaction. Only revealed Moments create Memories.
+The durable result created automatically by Reveal. A Memory contains the original Prompt, available Contributions, date, and Pom reaction. Only revealed Moments create Memories. A Memory is not a manually authored journal entry and never carries a Map location.
+
+### Journal Entry
+
+A manually authored item owned by the Pair. A Journal Entry has a title, optional text and private photos, a start date, optional end date and time, optional yearly recurrence, optional confirmed place, and a Thread. Its date determines whether it is presented as lived or upcoming; Users never choose a separate memory or special-day type.
+
+### Diary
+
+The shared container that combines revealed Memories, Journal Entries, birthdays, and the Pair anniversary. Diary exposes History, Calendar, and Map views without changing the lifecycle or ownership rules of each source.
 
 ### History
 
-The chronological, read-only-first collection of a Pair's Memories. Use History rather than timeline as the product concept; timeline describes its initial presentation.
+The chronological view inside Diary. It shows upcoming Journal Entry occurrences and milestones before the reverse-chronological collection of revealed Memories and lived Journal Entries.
+
+### Calendar
+
+The date-based view inside Diary. It projects Memories, Journal Entries, birthdays, and the Pair anniversary without materializing recurring duplicates.
 
 ### Map
 
-The read-only geographic view of Memories that contain an approximate city. It never exposes precise coordinates to the partner.
+The geographic view inside Diary. It contains only Journal Entries with an optional place explicitly confirmed by a Pair member. The confirmed pin is visible to both Pair members, but Pomelo never captures it in the background or infers it from a Moment.
 
 ### Thread
 
-The lightweight follow-up conversation attached to a revealed Memory. It is not a general-purpose chat and does not exist before Reveal.
+The lightweight follow-up conversation attached to a revealed Memory or Journal Entry. It is not a general-purpose chat and does not exist outside a Diary item.
 
 ### Pom
 
@@ -76,7 +88,7 @@ The Pair's cumulative reward state derived from revealed Memories. The first Mem
 
 ### Important Date
 
-A birthday, anniversary, trip, or custom future date meaningful to the Pair. Important Dates may appear in the Pair space and countdown surfaces.
+A recurring birthday sourced from a Profile or anniversary sourced from the Pair. Custom dates and trips are Journal Entries instead. Important Dates are projected into Diary and countdown surfaces without creating duplicate entries.
 
 ### Premium
 
@@ -88,7 +100,7 @@ The User who purchases and retains ownership of Premium. If the Pair is dissolve
 
 ### Archive Mode
 
-The read-only state entered when a Pair has no Premium access or has been dissolved. Existing permitted Memories remain readable, but no new joint Moments are generated.
+The preservation state entered when a Pair has no Premium access or has been dissolved. Existing permitted Memories and Journal Entries remain readable. A linked Pair without Premium may edit existing Journal Entries but cannot create another after consuming its free entry; a dissolved Pair is read-only except for privacy removal controls.
 
 ### Widget Family
 
@@ -108,11 +120,13 @@ The native home-screen surfaces for Moment status, latest revealed Memory, appro
 10. After the free Reveal, new Moments require Premium; the first Memory remains readable.
 11. Premium ownership belongs to the Subscriber, while access is projected onto the Subscriber's active Pair.
 12. Pom never becomes hungry, ill, sad, or punitive because the Pair was inactive.
-13. Location is optional, approximate, removable, and never represented as live background tracking.
+13. Journal Entry location is optional, manually confirmed, removable, Pair-private, and never represented as live or background tracking.
 14. Visual widget content is opt-in and appears only after Reveal.
 15. Pair-level activation and retention are the primary product metrics.
 16. Every launch surface is fully localized in Spanish and English; no User-facing string may depend on a hard-coded source language.
 17. Every launch surface supports light and dark appearance without changing domain behavior or exposing hidden content.
+18. Journal Entries never create Memories and never advance Streak or Progress.
+19. A Pair receives exactly one lifetime Journal Entry creation without Premium; deleting it does not restore the allowance.
 
 ## Lifecycle summary
 

@@ -17,7 +17,7 @@ class FakeThreadRepository implements ThreadRepository {
   listener: (() => void) | null = null;
   state: ThreadState = {
     canWrite: true,
-    memoryId: 'memory-1',
+    targetId: 'memory-1',
     messages: [firstMessage],
   };
   calls: { body: string; clientMessageId: string }[] = [];
@@ -63,7 +63,7 @@ describe('ThreadController', () => {
 
     expect(controller.getSnapshot()).toMatchObject({
       canWrite: true,
-      memoryId: 'memory-1',
+      targetId: 'memory-1',
       messages: [firstMessage],
       status: 'ready',
     });
@@ -126,7 +126,7 @@ describe('ThreadController', () => {
     await controller.refresh();
 
     const sendRequest = controller.send('A note for the first Memory.');
-    repository.state = { canWrite: true, memoryId: 'memory-2', messages: [] };
+    repository.state = { canWrite: true, targetId: 'memory-2', messages: [] };
     controller.open('memory-2');
     await controller.refresh();
     resolveSend({
@@ -137,7 +137,7 @@ describe('ThreadController', () => {
     await sendRequest;
 
     expect(controller.getSnapshot()).toMatchObject({
-      memoryId: 'memory-2',
+      targetId: 'memory-2',
       messages: [],
       status: 'ready',
     });

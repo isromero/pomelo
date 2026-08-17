@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useAppearance } from '@/appearance/appearance-provider';
 import type { SemanticColors } from '@/constants/pomelo-theme';
@@ -72,16 +73,16 @@ export function PhotoCompositionPreview({
     <View style={styles.photoComposition}>
       <View style={styles.photoPrimary}>
         {urls.partnerRear ? (
-          <Image resizeMode="cover" source={{ uri: urls.partnerRear }} style={styles.photoImage} />
+          <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.partnerRear} source={{ uri: urls.partnerRear }} style={styles.photoImage} />
         ) : null}
         {urls.partnerFront ? (
-          <Image resizeMode="cover" source={{ uri: urls.partnerFront }} style={styles.photoPartnerFront} />
+          <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.partnerFront} source={{ uri: urls.partnerFront }} style={styles.photoPartnerFront} />
         ) : null}
         {loading ? <ActivityIndicator color={colors.action} size="small" style={styles.loader} /> : null}
       </View>
       <View style={styles.photoThumbnail}>
-        {urls.ownRear ? <Image resizeMode="cover" source={{ uri: urls.ownRear }} style={styles.photoImage} /> : null}
-        {urls.ownFront ? <Image resizeMode="cover" source={{ uri: urls.ownFront }} style={styles.photoOwnFront} /> : null}
+        {urls.ownRear ? <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.ownRear} source={{ uri: urls.ownRear }} style={styles.photoImage} /> : null}
+        {urls.ownFront ? <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.ownFront} source={{ uri: urls.ownFront }} style={styles.photoOwnFront} /> : null}
       </View>
     </View>
   );

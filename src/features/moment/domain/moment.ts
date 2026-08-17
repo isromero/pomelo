@@ -103,6 +103,7 @@ export type QuestionPrompt = {
 };
 
 export type Contribution = {
+  available?: boolean;
   id: string;
   photo?: PhotoContribution | null;
   responseChoice: string | null;

@@ -20,6 +20,7 @@ export type Database = {
           photo_rear_path: string | null
           photo_rear_width: number | null
           photo_submission_id: string | null
+          removed_at: string | null
           response_choice: string | null
           response_text: string | null
           submitted_at: string
@@ -35,6 +36,7 @@ export type Database = {
           photo_rear_path?: string | null
           photo_rear_width?: number | null
           photo_submission_id?: string | null
+          removed_at?: string | null
           response_choice?: string | null
           response_text?: string | null
           submitted_at?: string
@@ -50,6 +52,7 @@ export type Database = {
           photo_rear_path?: string | null
           photo_rear_width?: number | null
           photo_submission_id?: string | null
+          removed_at?: string | null
           response_choice?: string | null
           response_text?: string | null
           submitted_at?: string
@@ -168,43 +171,136 @@ export type Database = {
           },
         ]
       }
-      important_dates: {
+      journal_entries: {
         Row: {
+          body: string | null
+          client_request_id: string
           created_at: string
           created_by: string
-          date: string
+          end_date: string | null
           id: string
-          kind: string
-          name: string
+          latitude: number | null
+          location_city: string | null
+          location_country_code: string | null
+          location_label: string | null
+          longitude: number | null
           pair_id: string
           recurrence: string
+          start_date: string
+          start_time: string | null
+          time_zone: string | null
+          title: string
           updated_at: string
+          updated_by: string
+          version: number
+          widget_hidden: boolean
         }
         Insert: {
+          body?: string | null
+          client_request_id: string
           created_at?: string
           created_by: string
-          date: string
+          end_date?: string | null
           id?: string
-          kind: string
-          name: string
+          latitude?: number | null
+          location_city?: string | null
+          location_country_code?: string | null
+          location_label?: string | null
+          longitude?: number | null
           pair_id: string
           recurrence?: string
+          start_date: string
+          start_time?: string | null
+          time_zone?: string | null
+          title: string
           updated_at?: string
+          updated_by: string
+          version?: number
+          widget_hidden?: boolean
         }
         Update: {
+          body?: string | null
+          client_request_id?: string
           created_at?: string
           created_by?: string
-          date?: string
+          end_date?: string | null
           id?: string
-          kind?: string
-          name?: string
+          latitude?: number | null
+          location_city?: string | null
+          location_country_code?: string | null
+          location_label?: string | null
+          longitude?: number | null
           pair_id?: string
           recurrence?: string
+          start_date?: string
+          start_time?: string | null
+          time_zone?: string | null
+          title?: string
           updated_at?: string
+          updated_by?: string
+          version?: number
+          widget_hidden?: boolean
         }
         Relationships: [
           {
-            foreignKeyName: "important_dates_pair_id_fkey"
+            foreignKeyName: "journal_entries_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entry_media: {
+        Row: {
+          client_media_id: string
+          created_at: string
+          created_by: string
+          entry_id: string
+          height: number
+          id: string
+          mime_type: string
+          pair_id: string
+          position: number
+          storage_path: string
+          width: number
+        }
+        Insert: {
+          client_media_id: string
+          created_at?: string
+          created_by: string
+          entry_id: string
+          height: number
+          id?: string
+          mime_type?: string
+          pair_id: string
+          position: number
+          storage_path: string
+          width: number
+        }
+        Update: {
+          client_media_id?: string
+          created_at?: string
+          created_by?: string
+          entry_id?: string
+          height?: number
+          id?: string
+          mime_type?: string
+          pair_id?: string
+          position?: number
+          storage_path?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_media_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_media_pair_id_fkey"
             columns: ["pair_id"]
             isOneToOne: false
             referencedRelation: "pairs"
@@ -427,6 +523,32 @@ export type Database = {
           },
         ]
       }
+      pair_journal_state: {
+        Row: {
+          consumed_at: string | null
+          free_entry_consumed: boolean
+          pair_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          free_entry_consumed?: boolean
+          pair_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          free_entry_consumed?: boolean
+          pair_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pair_journal_state_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: true
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pair_memberships: {
         Row: {
           ended_at: string | null
@@ -454,6 +576,35 @@ export type Database = {
             foreignKeyName: "pair_memberships_pair_id_fkey"
             columns: ["pair_id"]
             isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pair_progress: {
+        Row: {
+          equipped_accessory: string | null
+          memory_count: number
+          pair_id: string
+          updated_at: string
+        }
+        Insert: {
+          equipped_accessory?: string | null
+          memory_count?: number
+          pair_id: string
+          updated_at?: string
+        }
+        Update: {
+          equipped_accessory?: string | null
+          memory_count?: number
+          pair_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pair_progress_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: true
             referencedRelation: "pairs"
             referencedColumns: ["id"]
           },
@@ -704,7 +855,8 @@ export type Database = {
           created_at: string
           event_type: string
           id: string
-          memory_id: string
+          journal_entry_id: string | null
+          memory_id: string | null
           message_id: string
           pair_id: string
         }
@@ -713,7 +865,8 @@ export type Database = {
           created_at?: string
           event_type?: string
           id?: string
-          memory_id: string
+          journal_entry_id?: string | null
+          memory_id?: string | null
           message_id: string
           pair_id: string
         }
@@ -722,11 +875,19 @@ export type Database = {
           created_at?: string
           event_type?: string
           id?: string
-          memory_id?: string
+          journal_entry_id?: string | null
+          memory_id?: string | null
           message_id?: string
           pair_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "thread_message_events_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "thread_message_events_memory_id_fkey"
             columns: ["memory_id"]
@@ -756,7 +917,8 @@ export type Database = {
           client_message_id: string
           created_at: string
           id: string
-          memory_id: string
+          journal_entry_id: string | null
+          memory_id: string | null
           pair_id: string
           user_id: string
         }
@@ -765,7 +927,8 @@ export type Database = {
           client_message_id: string
           created_at?: string
           id?: string
-          memory_id: string
+          journal_entry_id?: string | null
+          memory_id?: string | null
           pair_id: string
           user_id: string
         }
@@ -774,11 +937,19 @@ export type Database = {
           client_message_id?: string
           created_at?: string
           id?: string
-          memory_id?: string
+          journal_entry_id?: string | null
+          memory_id?: string | null
           pair_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "thread_messages_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "thread_messages_memory_id_fkey"
             columns: ["memory_id"]
@@ -804,6 +975,17 @@ export type Database = {
         Args: { invitation_credential: string }
         Returns: Json
       }
+      add_journal_entry_media: {
+        Args: {
+          target_client_media_id: string
+          target_entry_id: string
+          target_height: number
+          target_position: number
+          target_storage_path: string
+          target_width: number
+        }
+        Returns: Json
+      }
       cancel_pair_invitation: { Args: { invitation_id: string }; Returns: Json }
       complete_doodle: {
         Args: { client_completion_id: string; target_moment_id: string }
@@ -815,12 +997,18 @@ export type Database = {
         }
         Returns: Json
       }
-      create_important_date: {
+      create_journal_entry: {
         Args: {
-          date_kind: string
-          date_name: string
-          date_recurrence?: string
-          date_value: string
+          target_body: string
+          target_client_request_id: string
+          target_end_date: string
+          target_location: Json
+          target_recurrence: string
+          target_start_date: string
+          target_start_time: string
+          target_time_zone: string
+          target_title: string
+          target_widget_hidden: boolean
         }
         Returns: Json
       }
@@ -833,28 +1021,52 @@ export type Database = {
         Args: { pair_anniversary: string }
         Returns: Json
       }
-      delete_important_date: { Args: { target_date_id: string }; Returns: Json }
+      delete_journal_entry: {
+        Args: { expected_version: number; target_entry_id: string }
+        Returns: Json
+      }
       dissolve_pair: { Args: never; Returns: Json }
       get_daily_moment: { Args: never; Returns: Json }
       get_daily_moment_legacy: { Args: never; Returns: Json }
       get_doodle_session: { Args: { target_moment_id: string }; Returns: Json }
-      get_important_date_widget: { Args: never; Returns: Json }
+      get_journal_access: { Args: never; Returns: Json }
+      get_journal_calendar: {
+        Args: { range_end: string; range_start: string }
+        Returns: Json
+      }
+      get_journal_entries: { Args: never; Returns: Json }
+      get_journal_map: { Args: never; Returns: Json }
+      get_journal_page: {
+        Args: {
+          cursor_date?: string
+          cursor_id?: string
+          cursor_origin?: string
+          page_size?: number
+        }
+        Returns: Json
+      }
+      get_journal_thread: { Args: { target_entry_id: string }; Returns: Json }
       get_memory_history: { Args: never; Returns: Json }
       get_memory_thread: { Args: { target_memory_id: string }; Returns: Json }
       get_pair_state: { Args: never; Returns: Json }
+      get_pom_progress: { Args: never; Returns: Json }
       get_premium_state: { Args: never; Returns: Json }
       important_date_for_year: {
         Args: { target_date: string; target_year: number }
         Returns: string
       }
-      important_date_payload: {
-        Args: {
-          target_date: Database["public"]["Tables"]["important_dates"]["Row"]
-        }
-        Returns: Json
-      }
       important_dates_for_pair: {
         Args: { target_pair_id: string }
+        Returns: Json
+      }
+      journal_date_in_year: {
+        Args: { source_date: string; target_year: number }
+        Returns: string
+      }
+      journal_entry_payload: {
+        Args: {
+          target_entry: Database["public"]["Tables"]["journal_entries"]["Row"]
+        }
         Returns: Json
       }
       list_memories: { Args: never; Returns: Json }
@@ -888,6 +1100,7 @@ export type Database = {
       pair_has_premium: { Args: { target_pair_id: string }; Returns: boolean }
       pair_state_for_user: { Args: { target_user_id: string }; Returns: Json }
       pair_streak_payload: { Args: { target_pair_id: string }; Returns: Json }
+      pom_progress_payload: { Args: { target_pair_id: string }; Returns: Json }
       premium_subscription_payload: {
         Args: {
           target_subscription: Database["public"]["Tables"]["premium_subscriptions"]["Row"]
@@ -911,12 +1124,28 @@ export type Database = {
         }
         Returns: undefined
       }
+      remove_journal_entry_media: {
+        Args: { target_media_id: string }
+        Returns: Json
+      }
+      remove_own_contribution: {
+        Args: { target_contribution_id: string }
+        Returns: Json
+      }
       reveal_moment: { Args: { target_moment_id: string }; Returns: Json }
       save_doodle_snapshot: {
         Args: {
           client_operation_id: string
           target_document: Json
           target_moment_id: string
+        }
+        Returns: Json
+      }
+      send_journal_thread_message: {
+        Args: {
+          message_body: string
+          target_client_message_id: string
+          target_entry_id: string
         }
         Returns: Json
       }
@@ -932,6 +1161,7 @@ export type Database = {
         Args: { enabled: boolean; target_memory_id: string }
         Returns: boolean
       }
+      set_pom_accessory: { Args: { target_accessory?: string }; Returns: Json }
       submit_photo_contribution: {
         Args: {
           client_submission_id: string
@@ -959,13 +1189,19 @@ export type Database = {
         }
         Returns: Json
       }
-      update_important_date: {
+      update_journal_entry: {
         Args: {
-          date_kind: string
-          date_name: string
-          date_recurrence?: string
-          date_value: string
-          target_date_id: string
+          expected_version: number
+          target_body: string
+          target_end_date: string
+          target_entry_id: string
+          target_location: Json
+          target_recurrence: string
+          target_start_date: string
+          target_start_time: string
+          target_time_zone: string
+          target_title: string
+          target_widget_hidden: boolean
         }
         Returns: Json
       }

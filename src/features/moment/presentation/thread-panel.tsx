@@ -24,11 +24,11 @@ function errorKey(error: ThreadErrorCode) {
 
 export function ThreadPanel({
   controller,
-  memoryId,
+  targetId,
   ownUserId,
 }: {
   controller: ThreadController;
-  memoryId: string;
+  targetId: string;
   ownUserId: string;
 }) {
   const { colors } = useAppearance();
@@ -42,9 +42,9 @@ export function ThreadPanel({
   const [body, setBody] = useState('');
 
   useEffect(() => {
-    controller.open(memoryId);
+    controller.open(targetId);
     return () => controller.close();
-  }, [controller, memoryId]);
+  }, [controller, targetId]);
 
   const send = async () => {
     const submittedBody = body;

@@ -22,10 +22,10 @@ Entregar la Widget Family completa en iOS usando datos reales: estado del Moment
 - [ ] Photo usa la imagen de la pareja como principal y la propia como miniatura en una composición estilo BeReal.
 - [ ] El contenido visual requiere opt-in explícito y puede ocultarse inmediatamente desde la app.
 - [ ] El widget de distancia usa ciudades configuradas manualmente, muestra una aproximación o `Juntos` y nunca afirma ser GPS en vivo.
-- [ ] El widget de Important Date muestra la siguiente cuenta atrás vigente y reacciona a edición o eliminación.
+- [ ] El widget de próxima fecha elige la Journal Entry, cumpleaños o aniversario elegible más cercano y reacciona a edición, ocultación o eliminación.
 - [ ] Cada widget ofrece tamaños compatibles con su contenido y estados vacíos que no filtran datos.
 - [ ] Todos los textos y fechas del widget respetan el Locale del User y sus superficies permanecen legibles en las apariencias clara y oscura del sistema.
-- [ ] Logout, unlinking, eliminación de Contribution, retirada de ubicación y expiry actualizan o neutralizan el widget correspondiente.
+- [ ] Logout, unlinking, eliminación de Contribution o Journal Entry, retirada de ubicación y expiry actualizan o neutralizan el widget correspondiente.
 - [ ] Los datos e imágenes compartidos con la extensión tienen ciclo de vida privado y no permanecen después de revocación.
 - [ ] Pruebas en dispositivo verifican refresh, deep links, opt-in, Reveal, eliminación, sesión y estados sin red.
 
@@ -39,3 +39,9 @@ Entregar la Widget Family completa en iOS usando datos reales: estado del Moment
 - [13 - Horario, notificaciones y deep links](13-horario-notificaciones-y-deep-links.md)
 
 ## Comments
+
+### 2026-08-17 - Contrato de próxima fecha preparado
+
+- Diary expone `nextWidgetOccurrence`, que combina Journal Entries, cumpleaños y aniversario, excluye entradas ocultas y compara ocurrencias con fecha/hora/zona horaria.
+- `WidgetEntryScreen` ya consume esa proyección y abre la Journal Entry correcta o Calendar mediante deep link.
+- La Widget Family iOS completa, sus familias visuales, refresh nativo, opt-in de media y QA en dispositivo siguen pendientes de este issue.

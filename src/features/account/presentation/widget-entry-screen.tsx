@@ -2,32 +2,52 @@ import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { useMoment } from '@/features/moment/moment-api';
+import { nextWidgetOccurrence, useJournal } from '@/features/journal/journal-api';
+import { type AccessoryId, usePomProgress } from '@/features/pom/pom-api';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
 import { captureDiagnostic } from '@/lib/diagnostics';
 import { useLocale } from '@/localization/locale-provider';
+import type { TranslationKey } from '@/localization/catalogs';
 import PomeloStatusWidget from '@/widgets/pomelo-status-widget';
+
+const accessoryLabels: Record<AccessoryId, TranslationKey> = {
+  crown: 'pom.accessory.crown',
+  ribbon: 'pom.accessory.ribbon',
+  scarf: 'pom.accessory.scarf',
+  sunhat: 'pom.accessory.sunhat',
+};
 
 export function WidgetEntryScreen() {
   const { status } = useAccount();
-  const { history } = useMoment();
+  const { entries, projection } = useJournal();
+  const { progress } = usePomProgress();
   const premium = usePremium();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [snapshotUpdated, setSnapshotUpdated] = useState(false);
 
   useEffect(() => {
     try {
-      const locked = history.length > 0 && premium.access !== 'premium';
+      const locked = premium.access !== 'premium';
+      const next = nextWidgetOccurrence(entries, projection.upcoming);
       PomeloStatusWidget.updateSnapshot({
-        action: t(locked ? 'premium.unlock' : 'widget.action'),
-        title: t(locked ? 'premium.widget.title' : 'widget.title'),
+        accessoryLabel: progress?.equippedAccessory
+          ? t(accessoryLabels[progress.equippedAccessory])
+          : undefined,
+        action: locked ? t('premium.unlock') : next
+          ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' })
+            .format(new Date(`${next.startDate}T12:00:00`))
+          : t('widget.action'),
+        title: locked ? t('premium.widget.title') : next?.name ?? t('widget.title'),
+        url: next?.kind === 'entry'
+          ? `pomelo://diary?entryId=${encodeURIComponent(next.id)}`
+          : 'pomelo://diary?view=calendar',
       });
     } catch {
       captureDiagnostic({ area: 'widget', code: 'snapshot-failed', recoverable: true });
     } finally {
       setSnapshotUpdated(true);
     }
-  }, [history.length, premium.access, t]);
+  }, [entries, locale, premium.access, progress?.equippedAccessory, projection.upcoming, t]);
 
   if (!snapshotUpdated || status === 'booting') {
     return null;

@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,23 +15,24 @@ import { useAppearance } from '@/appearance/appearance-provider';
 import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
-import { useAccount } from '@/features/account/presentation/account-provider';
-import type { MomentErrorCode } from '@/features/moment/application/moment-controller';
+import { useAccount } from '@/features/account/account-api';
+import { hasNewMemory } from '@/features/home/reveal-reaction';
 import {
+  createDevelopmentPhotoDraft,
+  DailyMomentCard,
   initialStreakState,
   type DailyMoment,
   type Memory,
-} from '@/features/moment/domain/moment';
-import { createDevelopmentPhotoDraft } from '@/features/moment/infrastructure/development-test-photos';
-import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
-import { useDoodleMoment, useMoment } from '@/features/moment/moment-api';
-import type { PairStatus } from '@/features/pair/application/pair-controller';
+  type MomentErrorCode,
+  useDoodleMoment,
+  useMoment,
+} from '@/features/moment/moment-api';
+import { type PairStatus } from '@/features/pair/pair-api';
+import { PomDisplay, usePomProgress } from '@/features/pom/pom-api';
 import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
 import { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
-
-const pomHomeReady = require('@/assets/images/pom/pom-calm.png');
 
 type MomentState = 'answer' | 'complete' | 'ready' | 'waiting';
 
@@ -142,7 +142,7 @@ export function HomeScreen({
 }: {
   pairStatus: Extract<PairStatus, 'active' | 'archived' | 'waiting'>;
 }) {
-  const { colors } = useAppearance();
+  const { colors, resolved } = useAppearance();
   const { profile } = useAccount();
   const { locale, t } = useLocale();
   const momentRuntime = useMoment();
@@ -151,6 +151,7 @@ export function HomeScreen({
     [momentRuntime.controller],
   );
   const { controller: doodleController, snapshot: doodle } = useDoodleMoment();
+  const pom = usePomProgress();
   const premium = usePremium();
   const styles = createStyles(colors);
   const waitingForPartner = pairStatus === 'waiting';
@@ -161,8 +162,10 @@ export function HomeScreen({
       ? null
       : momentRuntime.error;
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const [pomReaction, setPomReaction] = useState<'idle' | 'reveal'>('idle');
   const [paywallPending, setPaywallPending] = useState(false);
   const paywallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const memoryIdsRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     if (
@@ -194,18 +197,36 @@ export function HomeScreen({
   }, []);
 
   useEffect(() => {
+    if (pomReaction === 'idle') {
+      return undefined;
+    }
+    const timer = setTimeout(() => setPomReaction('idle'), 750);
+    return () => clearTimeout(timer);
+  }, [pomReaction]);
+
+  useEffect(() => {
+    if (momentRuntime.status !== 'ready') {
+      return;
+    }
+    if (hasNewMemory(memoryIdsRef.current, momentRuntime.history)) {
+      setPomReaction('reveal');
+    }
+    memoryIdsRef.current = new Set(momentRuntime.history.map((memory) => memory.id));
+  }, [momentRuntime.history, momentRuntime.status]);
+
+  useEffect(() => {
     if (premium.access === 'premium' && momentRuntime.error === 'premiumRequired') {
       void momentRuntime.controller.refresh();
     }
   }, [momentRuntime.controller, momentRuntime.error, premium.access]);
 
   const revealMoment = async () => {
+    const previousMemoryIds = new Set(momentRuntime.history.map((memory) => memory.id));
     await momentRuntime.controller.revealMoment();
-    const revealedMoment = momentRuntime.controller.getSnapshot().moment;
+    const snapshot = momentRuntime.controller.getSnapshot();
     if (
       premium.access !== 'premium' &&
-      revealedMoment?.status === 'revealed' &&
-      revealedMoment.memoryId
+      hasNewMemory(previousMemoryIds, snapshot.history)
     ) {
       setPaywallPending(true);
     }
@@ -213,7 +234,7 @@ export function HomeScreen({
 
   const currentMomentState = momentState(displayMoment);
   const copy = waitingForPartner ? waitingHeroCopy : heroCopy[currentMomentState];
-  const memoryCount = momentRuntime.history.length;
+  const memoryCount = pom.progress?.memoryCount ?? momentRuntime.history.length;
   const progressText = useMemo(
     () =>
       t(memoryCount === 1 ? 'home.progress.one' : 'home.progress.many').replace(
@@ -252,11 +273,23 @@ export function HomeScreen({
               {date}
             </Text>
 
-            <View style={[styles.pomHero, { backgroundColor: colors[copy.background] }]}>
-              <Image
-                resizeMode="contain"
-                source={pomHomeReady}
-                style={styles.pomImage}
+            <Pressable
+              accessibilityLabel={t('pom.wardrobe.title')}
+              accessibilityRole="button"
+              disabled={waitingForPartner}
+              onPress={() => router.push('/pom')}
+              style={({ pressed }) => [
+                styles.pomHero,
+                { backgroundColor: colors[copy.background] },
+                pressed && styles.pressed,
+              ]}
+            >
+              <PomDisplay
+                accessory={pom.progress?.equippedAccessory}
+                dark={resolved === 'dark'}
+                expression={pom.progress?.expression ?? 'calm'}
+                reaction={pomReaction}
+                size={126}
               />
 
               <View style={styles.heroCopy}>
@@ -268,7 +301,7 @@ export function HomeScreen({
                   </Text>
                 </View>
               </View>
-            </View>
+            </Pressable>
 
             {waitingForPartner ? (
               <WaitingMomentCard />

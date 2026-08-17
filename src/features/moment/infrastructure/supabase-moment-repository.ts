@@ -40,6 +40,7 @@ const errorCodes: Record<string, MomentErrorCode> = {
   invalid_format: 'invalidFormat',
   invalid_message: 'invalidResponse',
   invalid_response: 'invalidResponse',
+  invalid_location: 'invalidLocation',
   moment_closed: 'momentClosed',
   moment_not_found: 'momentNotFound',
   moment_not_ready: 'momentNotReady',
@@ -195,10 +196,12 @@ function parseContribution(value: unknown): Contribution | null {
   const id = stringValue(value.id);
   const submittedAt = stringValue(value.submittedAt);
   const userId = stringValue(value.userId);
-  if (!id || !submittedAt || !userId) {
+  const available = value.available === undefined ? true : booleanValue(value.available);
+  if (!id || !submittedAt || !userId || available === null) {
     throw new MomentError('unexpected');
   }
   return {
+    available,
     id,
     photo: parsePhotoContribution(value.photo),
     responseChoice: nullableString(value.responseChoice),
@@ -464,7 +467,7 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
     }
     return {
       canWrite: data.canWrite,
-      memoryId,
+      targetId: memoryId,
       messages: data.messages.map(parseThreadMessage),
     };
   }
@@ -521,10 +524,17 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
     return data === true;
   }
 
+  async removeOwnContribution(contributionId: string) {
+    const { data, error } = await this.client.rpc('remove_own_contribution', {
+      target_contribution_id: contributionId,
+    });
+    return this.memoryResult(data, error);
+  }
+
   async createPrivateMediaUrl(path: string) {
     const { data, error } = await this.client.storage
       .from(MOMENT_MEDIA_BUCKET)
-      .createSignedUrl(path, 60 * 60);
+      .createSignedUrl(path, 5 * 60);
     if (error || !data?.signedUrl) {
       throw new MomentError('network');
     }
@@ -569,6 +579,14 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
     return parseDailyMoment(data);
   }
 
+  private memoryResult(data: unknown, error: { message?: string } | null) {
+    const failure = repositoryError(error);
+    if (failure) {
+      throw failure;
+    }
+    return parseMemory(data);
+  }
+
   private async uploadPhoto(path: string, capture: PhotoDraft['rear']) {
     if (!capture) {
       throw new MomentError('photoIncomplete');
@@ -592,6 +610,7 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
     await this.client.storage.from(MOMENT_MEDIA_BUCKET).remove(paths);
   }
 }
+
 
 function threadApplicationError(value: unknown) {
   if (!isObject(value) || typeof value.error !== 'string') {
