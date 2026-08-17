@@ -21,6 +21,7 @@ import {
   type PhotoDraft,
   type PhotoSide,
 } from '@/features/moment/domain/moment';
+import { PhotoCompositionPreview } from '@/features/moment/presentation/photo-composition-preview';
 import { useLocale } from '@/localization/locale-provider';
 
 type PhotoMomentCardProps = {
@@ -31,6 +32,7 @@ type PhotoMomentCardProps = {
   onReveal(): void;
   onSubmit(): void;
   onUseTestPhotos(): Promise<void>;
+  createPrivateMediaUrl(path: string): Promise<string>;
   photoDraft: PhotoDraft | null;
   syncPending: boolean;
 };
@@ -234,6 +236,7 @@ export function PhotoMomentCard({
   onReveal,
   onSubmit,
   onUseTestPhotos,
+  createPrivateMediaUrl,
   photoDraft,
   syncPending,
 }: PhotoMomentCardProps) {
@@ -300,14 +303,23 @@ export function PhotoMomentCard({
           {testPhotosError ? <Text style={styles.error}>{t('moment.photo.devError')}</Text> : null}
         </>
       ) : (
-        <View style={styles.waitingPanel}>
-          <Text style={styles.waitingTitle}>
-            {revealed ? t('moment.photo.revealed') : t('moment.photo.saved')}
-          </Text>
-          <Text style={styles.waitingBody}>
-            {revealed ? t('moment.photo.revealedBody') : t('moment.photo.waiting')}
-          </Text>
-        </View>
+        <>
+          <View style={styles.waitingPanel}>
+            <Text style={styles.waitingTitle}>
+              {revealed ? t('moment.photo.revealed') : t('moment.photo.saved')}
+            </Text>
+            <Text style={styles.waitingBody}>
+              {revealed ? t('moment.photo.revealedBody') : t('moment.photo.waiting')}
+            </Text>
+          </View>
+          {revealed ? (
+            <PhotoCompositionPreview
+              createPrivateMediaUrl={createPrivateMediaUrl}
+              ownContribution={moment.ownContribution}
+              partner={moment.partner}
+            />
+          ) : null}
+        </>
       )}
       {ready && !revealed ? (
         <Pressable

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -146,6 +146,10 @@ export function HomeScreen({
   const { profile } = useAccount();
   const { locale, t } = useLocale();
   const momentRuntime = useMoment();
+  const createPrivateMediaUrl = useCallback(
+    (path: string) => momentRuntime.controller.createPrivateMediaUrl(path),
+    [momentRuntime.controller],
+  );
   const { controller: doodleController, snapshot: doodle } = useDoodleMoment();
   const premium = usePremium();
   const styles = createStyles(colors);
@@ -278,6 +282,7 @@ export function HomeScreen({
             ) : (
               <DailyMomentCard
                 busy={momentRuntime.busy}
+                createPrivateMediaUrl={createPrivateMediaUrl}
                 draft={momentRuntime.draft}
                 error={displayError}
                 key={displayMoment.id}

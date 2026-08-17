@@ -24,6 +24,7 @@ import { useLocale } from '@/localization/locale-provider';
 
 type DailyMomentCardProps = {
   busy: boolean;
+  createPrivateMediaUrl(path: string): Promise<string>;
   draft: QuestionResponse | null;
   error: MomentErrorCode | null;
   moment: DailyMoment;
@@ -118,6 +119,7 @@ export function DailyMomentCard(props: DailyMomentCardProps) {
     return (
       <PhotoMomentCard
         busy={props.busy}
+        createPrivateMediaUrl={props.createPrivateMediaUrl}
         error={props.error}
         moment={props.moment}
         onDraftChange={props.onPhotoDraftChange}
