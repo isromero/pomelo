@@ -53,3 +53,10 @@ Convertir el conjunto de slices en una candidata publicable y demostrable. Verif
 - [22 - Provisioning y verificacion de autenticacion social](22-provisioning-auth-social.md)
 
 ## Comments
+
+### 2026-08-17 - Estado tras Diary unificado
+
+- La rama contiene los slices funcionales de Pom/Progress, Photo, Doodle, Threads y Diary unificado con Calendar, Map, media privada, RLS y proyección de widget.
+- Verificación automatizada actual: 25 suites y 111 tests Jest, 10 ficheros SQL con 242 aserciones pgTAP, typecheck, lint, smoke y exports Expo para web/iOS/Android; iOS nativo compila en simulator.
+- QA adicional: el acceso inicial del Diario para una Pair sin entradas devuelve booleanos válidos y no muestra falsamente el bloqueo Premium; el test aislado de Diary pasa con 37 aserciones.
+- Siguen fuera de esta implementación la programación de notificaciones, la Widget Family completa iOS/Android, provisioning social externo y la matriz final de dispositivos, accesibilidad, compras y publicación.

@@ -39,3 +39,9 @@ Entregar la Widget Family completa en iOS usando datos reales: estado del Moment
 - [13 - Horario, notificaciones y deep links](13-horario-notificaciones-y-deep-links.md)
 
 ## Comments
+
+### 2026-08-17 - Contrato de próxima fecha preparado
+
+- Diary expone `nextWidgetOccurrence`, que combina Journal Entries, cumpleaños y aniversario, excluye entradas ocultas y compara ocurrencias con fecha/hora/zona horaria.
+- `WidgetEntryScreen` ya consume esa proyección y abre la Journal Entry correcta o Calendar mediante deep link.
+- La Widget Family iOS completa, sus familias visuales, refresh nativo, opt-in de media y QA en dispositivo siguen pendientes de este issue.

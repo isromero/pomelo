@@ -123,6 +123,7 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
     ]);
   };
 
+  const showPremiumMessage = !entry && access.freeEntryConsumed && !access.isPremium;
   const disabled = busy || savingMedia || !title.trim() || access.readOnly || (!entry && !access.canCreate);
 
   return (
@@ -135,7 +136,7 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
             <Pressable disabled={disabled} onPress={() => void save()}><Text style={[dynamic.save, disabled && dynamic.disabled]}>{copy.save}</Text></Pressable>
           </View>
           <ScrollView contentContainerStyle={stylesBase.content} keyboardShouldPersistTaps="handled">
-            {!entry && !access.canCreate ? <Text style={dynamic.premium}>{copy.premium}</Text> : null}
+            {showPremiumMessage ? <Text style={dynamic.premium}>{copy.premium}</Text> : null}
             {access.readOnly ? <Text style={dynamic.premium}>{copy.readOnly}</Text> : null}
             {error ? <Text style={dynamic.error}>{copy.failed}</Text> : null}
             <TextInput maxLength={120} onChangeText={setTitle} placeholder={copy.title} placeholderTextColor={colors.muted} style={[dynamic.input, dynamic.titleInput]} value={title} />

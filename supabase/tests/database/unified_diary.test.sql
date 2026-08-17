@@ -1,6 +1,6 @@
 begin;
 
-select plan(35);
+select plan(37);
 
 select has_table('public', 'journal_entries', 'Journal Entries exist');
 select has_table('public', 'pair_journal_state', 'Pair journal allowance state exists');
@@ -35,6 +35,9 @@ insert into diary_results values (
 select is((select payload ->> 'status' from diary_results where label = 'accepted'), 'active', 'the Pair is active');
 
 select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000001', true);
+insert into diary_results values ('initial-access', public.get_journal_access());
+select is((select payload ->> 'freeEntryConsumed' from diary_results where label = 'initial-access'), 'false', 'a new Pair starts with an unused Journal allowance');
+select is((select payload ->> 'canCreate' from diary_results where label = 'initial-access'), 'true', 'a new active Pair can create its first Journal Entry');
 insert into diary_results values (
   'created',
   public.create_journal_entry(

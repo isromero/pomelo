@@ -1,6 +1,6 @@
 # Thread de conversación dentro de una Memory
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Parent
 
@@ -16,14 +16,14 @@ Permitir que una Pair continúe una conversación concreta después de Reveal me
 
 ## Acceptance criteria
 
-- [ ] Solo una Memory revelada puede tener Thread y ambos miembros de su Pair pueden abrirlo.
-- [ ] Los mensajes aparecen bajo las Contributions reveladas con alineación de conversación coherente.
-- [ ] Enviar un mensaje actualiza al otro cliente en tiempo razonable y los reintentos no producen duplicados.
-- [ ] Un User ajeno a la Pair no puede leer ni escribir mensajes mediante RLS.
-- [ ] Cada mensaje conserva autor y fecha y responde correctamente a logout, unlinking y Archive Mode.
-- [ ] El Thread admite texto en el MVP y no ofrece media, llamadas, presencia, recibos de lectura ni chat global.
-- [ ] Se emite un evento seguro para que el issue de notificaciones pueda avisar de una respuesta sin incluir el contenido privado.
-- [ ] Pruebas con dos Users cubren creación, actualización en tiempo real, autorización, retry y apertura desde Memory.
+- [x] Solo una Memory revelada puede tener Thread y ambos miembros de su Pair pueden abrirlo.
+- [x] Los mensajes aparecen bajo las Contributions reveladas con alineación de conversación coherente.
+- [x] Enviar un mensaje actualiza al otro cliente en tiempo razonable y los reintentos no producen duplicados.
+- [x] Un User ajeno a la Pair no puede leer ni escribir mensajes mediante RLS.
+- [x] Cada mensaje conserva autor y fecha y responde correctamente a logout, unlinking y Archive Mode.
+- [x] El Thread admite texto en el MVP y no ofrece media, llamadas, presencia, recibos de lectura ni chat global.
+- [x] Se emite un evento seguro para que el issue de notificaciones pueda avisar de una respuesta sin incluir el contenido privado.
+- [x] Pruebas con dos Users cubren creación, actualización en tiempo real, autorización, retry y apertura desde Memory.
 
 ## Blocked by
 
@@ -31,3 +31,8 @@ Permitir que una Pair continúe una conversación concreta después de Reveal me
 
 ## Comments
 
+### 2026-08-17 - Generalización a Diary
+
+- `19a629b` implementa Thread de Memory con texto, realtime, eventos sin cuerpo privado, RLS y reintentos idempotentes.
+- El modelo se generaliza en `8c3a1dd` y `d073511`: cada mensaje apunta exactamente a una Memory o a una Journal Entry, y Diary reutiliza el mismo panel contextual.
+- `supabase/tests/database/photo_doodle_thread.test.sql` y `unified_diary.test.sql` cubren autorización, Archive Mode, eventos y Threads de Journal Entry.

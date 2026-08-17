@@ -40,3 +40,8 @@ Hacer que el ritual diario vuelva a llamar a cada miembro en el momento correcto
 ### 2026-08-17 - Próximos planes de Diary
 
 - ADR-0010 añade avisos para Journal Entries futuras. La cadencia exacta se decidirá dentro de este issue; el slice de Diary solo entrega fechas, recurrencia y deep-link target.
+
+### 2026-08-17 - Estado de implementación
+
+- Diary ya expone fecha civil, rango, hora opcional, zona horaria, recurrencia anual y el deep link `pomelo://diary?entryId=...` que necesitará el scheduler.
+- No se han implementado todavía programación, reprogramación, cancelación ni entrega de notificaciones para Journal Entries; permanecen dentro del alcance de este issue.

@@ -40,3 +40,9 @@ Entregar en Android las mismas finalidades de Widget Family validadas para el pr
 - [13 - Horario, notificaciones y deep links](13-horario-notificaciones-y-deep-links.md)
 
 ## Comments
+
+### 2026-08-17 - Contrato de próxima fecha preparado
+
+- El contrato compartido de Diary selecciona la próxima Journal Entry, cumpleaños o aniversario elegible y mantiene la privacidad de entradas ocultas.
+- El deep link de entrada ya está definido para que el widget Android abra Diary en el elemento correcto cuando se implemente el refresh nativo.
+- La Widget Family Android completa, RemoteViews dinámicas, refresh nativo, opt-in de media y QA con launchers siguen pendientes de este issue.
