@@ -18,7 +18,7 @@ import { useLocale } from '@/localization/locale-provider';
 
 export default function WidgetPreviewRoute() {
   const { colors } = useAppearance();
-  const { status, profile, controller } = useAccount();
+  const { status, profile } = useAccount();
   const pair = usePair();
   const { history, moment } = useMoment();
   const premium = usePremium();
@@ -41,7 +41,6 @@ export default function WidgetPreviewRoute() {
       <View style={styles.shell}>
         <AppHeader
           avatarKey={profile?.avatarKey ?? 'calm'}
-          onAvatarPress={() => void controller.signOut()}
           streakCount={moment?.streak.current ?? 0}
           showStreak={pair.state.status !== 'waiting'}
         />

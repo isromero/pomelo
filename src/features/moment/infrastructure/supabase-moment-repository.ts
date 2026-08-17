@@ -549,6 +549,7 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
         { event: '*', schema: 'public', table: 'pair_streaks' },
         listener,
       )
+      .on('broadcast', { event: 'moment-updated' }, listener)
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           listener();

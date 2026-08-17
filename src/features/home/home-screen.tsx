@@ -142,7 +142,7 @@ export function HomeScreen({
   pairStatus: Extract<PairStatus, 'active' | 'archived' | 'waiting'>;
 }) {
   const { colors } = useAppearance();
-  const { controller, profile } = useAccount();
+  const { profile } = useAccount();
   const { locale, t } = useLocale();
   const momentRuntime = useMoment();
   const { controller: doodleController, snapshot: doodle } = useDoodleMoment();
@@ -238,7 +238,6 @@ export function HomeScreen({
           showsVerticalScrollIndicator={false}>
           <AppHeader
             avatarKey={profile?.avatarKey ?? 'calm'}
-            onAvatarPress={() => void controller.signOut()}
             streakCount={momentRuntime.moment?.streak.current ?? 0}
             showStreak={!waitingForPartner}
           />
