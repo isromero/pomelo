@@ -3,6 +3,7 @@ import {
   validateJournalEntryInput,
   type JournalEntry,
   type JournalEntryInput,
+  type JournalCalendarOccurrence,
   type JournalMilestone,
   type JournalProjection,
 } from '@/features/journal/domain/journal';
@@ -25,6 +26,7 @@ export class JournalError extends Error {
 
 export interface JournalRepository {
   getEntries(): Promise<JournalEntry[]>;
+  getCalendar?(rangeStart: string, rangeEnd: string): Promise<JournalCalendarOccurrence[]>;
   getAccess?(): Promise<JournalAccess>;
   createEntry?(input: JournalEntryInput, requestId: string): Promise<JournalEntry>;
   updateEntry?(entryId: string, version: number, input: JournalEntryInput): Promise<JournalEntry>;
@@ -75,6 +77,7 @@ export class JournalController {
   private listeners = new Set<() => void>();
   private sources = initialSources;
   private snapshot = initialSnapshot;
+  private pendingCreate: { fingerprint: string; requestId: string } | null = null;
   private unsubscribeRepository: (() => void) | null = null;
 
   constructor(
@@ -102,6 +105,7 @@ export class JournalController {
     this.unsubscribeRepository?.();
     this.unsubscribeRepository = null;
     this.sources = initialSources;
+    this.pendingCreate = null;
     this.snapshot = initialSnapshot;
     this.emit();
   }
@@ -115,6 +119,16 @@ export class JournalController {
       this.replaceEntries(entries, access);
     } catch (error) {
       this.update({ error: errorCode(error), status: 'error' });
+    }
+  }
+
+  async getCalendar(rangeStart: string, rangeEnd: string) {
+    if (!this.repository.getCalendar) return null;
+    try {
+      return await this.repository.getCalendar(rangeStart, rangeEnd);
+    } catch (error) {
+      this.update({ error: errorCode(error) });
+      return null;
     }
   }
 
@@ -135,8 +149,13 @@ export class JournalController {
       return null;
     }
     this.update({ busy: true, error: null });
+    const fingerprint = JSON.stringify(input);
+    if (!this.pendingCreate || this.pendingCreate.fingerprint !== fingerprint) {
+      this.pendingCreate = { fingerprint, requestId: this.requestId() };
+    }
     try {
-      const entry = await this.repository.createEntry(input, this.requestId());
+      const entry = await this.repository.createEntry(input, this.pendingCreate.requestId);
+      this.pendingCreate = null;
       const access = this.repository.getAccess
         ? await this.repository.getAccess()
         : this.snapshot.access;

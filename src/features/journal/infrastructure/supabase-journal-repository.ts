@@ -7,6 +7,7 @@ import {
 } from '@/features/journal/application/journal-controller';
 import type {
   JournalEntry,
+  JournalCalendarOccurrence,
   JournalEntryInput,
   JournalLocation,
   JournalMedia,
@@ -193,6 +194,24 @@ export class SupabaseJournalRepository implements JournalRepository, ThreadRepos
 
   async getAccess() {
     return this.access;
+  }
+
+  async getCalendar(rangeStart: string, rangeEnd: string) {
+    const { data, error } = await this.client.rpc('get_journal_calendar', {
+      range_end: rangeEnd,
+      range_start: rangeStart,
+    });
+    const failure = transportFailure(error) ?? journalFailure(data);
+    if (failure) throw failure;
+    if (!Array.isArray(data)) throw new JournalError('unexpected');
+    return data.map((value): JournalCalendarOccurrence => {
+      if (!isObject(value) || (value.kind !== 'manualEntry' && value.kind !== 'milestone' && value.kind !== 'momentMemory')
+        || typeof value.id !== 'string' || typeof value.name !== 'string'
+        || typeof value.startDate !== 'string' || typeof value.endDate !== 'string') {
+        throw new JournalError('unexpected');
+      }
+      return { endDate: value.endDate, id: value.id, kind: value.kind, name: value.name, startDate: value.startDate };
+    });
   }
 
   async createEntry(input: JournalEntryInput, requestId: string) {

@@ -397,9 +397,6 @@ begin
   ) then
     return jsonb_build_object('error', 'not_allowed');
   end if;
-  if selected_entry.version != expected_version then
-    return jsonb_build_object('error', 'conflict', 'current', public.journal_entry_payload(selected_entry));
-  end if;
   if normalized_title is null or char_length(normalized_title) > 120
     or normalized_body is not null and char_length(normalized_body) > 5000
     or target_start_date is null
@@ -413,6 +410,27 @@ begin
       or (target_location ->> 'longitude')::double precision not between -180 and 180
     ) then
     return jsonb_build_object('error', 'invalid_entry');
+  end if;
+  if selected_entry.version != expected_version then
+    if selected_entry.version = expected_version + 1
+      and selected_entry.updated_by = current_user_id
+      and selected_entry.title = normalized_title
+      and selected_entry.body is not distinct from normalized_body
+      and selected_entry.start_date = target_start_date
+      and selected_entry.end_date is not distinct from target_end_date
+      and selected_entry.start_time is not distinct from target_start_time
+      and selected_entry.time_zone is not distinct from nullif(btrim(target_time_zone), '')
+      and selected_entry.recurrence = target_recurrence
+      and selected_entry.widget_hidden = coalesce(target_widget_hidden, false)
+      and selected_entry.location_label is not distinct from target_location ->> 'label'
+      and selected_entry.location_city is not distinct from target_location ->> 'city'
+      and selected_entry.location_country_code is not distinct from target_location ->> 'countryCode'
+      and selected_entry.latitude is not distinct from (target_location ->> 'latitude')::double precision
+      and selected_entry.longitude is not distinct from (target_location ->> 'longitude')::double precision
+    then
+      return public.journal_entry_payload(selected_entry);
+    end if;
+    return jsonb_build_object('error', 'conflict', 'current', public.journal_entry_payload(selected_entry));
   end if;
 
   update public.journal_entries

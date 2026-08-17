@@ -1,6 +1,7 @@
 import {
   createContext,
   type PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -70,7 +71,7 @@ export function JournalProvider({
   const controller = useMemo(() => new JournalController(repository), [repository]);
   const threadController = useMemo(() => new ThreadController(repository), [repository]);
 
-  useEffect(() => {
+  const syncSources = useCallback(() => {
     const state = pair.state;
     if (!state) return;
     controller.setSources({
@@ -94,6 +95,12 @@ export function JournalProvider({
   }, [controller, moment.history, pair.state, t]);
 
   useEffect(() => {
+    syncSources();
+    const timer = setInterval(syncSources, 60_000);
+    return () => clearInterval(timer);
+  }, [syncSources]);
+
+  useEffect(() => {
     if (!active) {
       controller.stop();
       threadController.close();
@@ -101,14 +108,17 @@ export function JournalProvider({
     }
     void controller.start();
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void controller.refresh();
+      if (state === 'active') {
+        syncSources();
+        void controller.refresh();
+      }
     });
     return () => {
       subscription.remove();
       controller.stop();
       threadController.close();
     };
-  }, [active, controller, threadController]);
+  }, [active, controller, syncSources, threadController]);
 
   return (
     <JournalContext.Provider value={{ controller, media: repository, threadController }}>

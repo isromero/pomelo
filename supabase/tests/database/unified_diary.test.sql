@@ -1,6 +1,6 @@
 begin;
 
-select plan(34);
+select plan(35);
 
 select has_table('public', 'journal_entries', 'Journal Entries exist');
 select has_table('public', 'pair_journal_state', 'Pair journal allowance state exists');
@@ -101,6 +101,16 @@ insert into diary_results values (
 );
 select is((select payload ->> 'version' from diary_results where label = 'partner-update'), '2', 'either member can edit with the expected version');
 select is((select payload #>> '{location,city}' from diary_results where label = 'partner-update'), null, 'a confirmed pin does not require reverse-geocoded city metadata');
+insert into diary_results values (
+  'partner-update-retry',
+  public.update_journal_entry(
+    ((select payload ->> 'id' from diary_results where label = 'created'))::uuid,
+    1, 'Lisboa juntos', 'Editado por los dos.', date '2026-08-10', null, null,
+    'Europe/Madrid', 'once', false,
+    '{"label":"Pin junto al río","latitude":38.7223,"longitude":-9.1393}'::jsonb
+  )
+);
+select is((select payload ->> 'version' from diary_results where label = 'partner-update-retry'), '2', 'retrying the same edit is idempotent');
 
 select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000001', true);
 insert into diary_results values (

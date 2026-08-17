@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,7 +9,7 @@ import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, type SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import type { JournalEntry, JournalHistoryItem, JournalProjection, UpcomingOccurrence } from '@/features/journal/domain/journal';
+import type { JournalCalendarOccurrence, JournalEntry, JournalHistoryItem, JournalProjection, UpcomingOccurrence } from '@/features/journal/domain/journal';
 import { JournalEditor } from '@/features/journal/presentation/journal-editor';
 import { JournalMap } from '@/features/journal/presentation/journal-map';
 import { useJournal } from '@/features/journal/presentation/journal-provider';
@@ -85,7 +85,7 @@ export function DiaryScreen() {
           <HistoryView copy={copy} entries={journal.entries} items={journal.projection.history} locale={locale} memories={moment.history} onOpenEntry={openEntry} upcoming={journal.projection.upcoming} />
         ) : null}
         {view === 'calendar' ? (
-          <CalendarView calendar={journal.projection.calendar} entries={journal.entries} locale={locale} memories={moment.history} onOpenEntry={openEntry} />
+          <CalendarView calendar={journal.projection.calendar} controller={journal.controller} entries={journal.entries} locale={locale} memories={moment.history} onOpenEntry={openEntry} />
         ) : null}
         {view === 'map' ? <ScrollView contentContainerStyle={styles.mapContent}><JournalMap entries={journal.projection.map} onOpen={openEntry} /></ScrollView> : null}
         <BottomNavigation activeTab="diary" />
@@ -168,15 +168,16 @@ function monthDays(month: string) {
   return [...Array(firstWeekday).fill(null), ...Array.from({ length: count }, (_, index) => `${year}-${String(monthNumber).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`)];
 }
 
-function CalendarView({ calendar, entries, locale, memories, onOpenEntry }: {
-  calendar: JournalProjection['calendar']; entries: JournalEntry[]; locale: 'es' | 'en'; memories: ReturnType<typeof useMoment>['history']; onOpenEntry(id: string): void;
+function CalendarView({ calendar, controller, entries, locale, memories, onOpenEntry }: {
+  calendar: JournalProjection['calendar']; controller: ReturnType<typeof useJournal>['controller']; entries: JournalEntry[]; locale: 'es' | 'en'; memories: ReturnType<typeof useMoment>['history']; onOpenEntry(id: string): void;
 }) {
   const { colors } = useAppearance();
+  const { t } = useLocale();
   const styles = createStyles(colors);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const days = monthDays(month);
-  const items = useMemo(() => {
+  const fallbackItems = useMemo(() => {
     const unique = new Map<string, { date: string; id: string; kind: 'entry' | 'memory' | 'milestone'; title: string }>();
     for (const item of calendar) {
       const date = 'date' in item ? item.date : item.startDate;
@@ -187,11 +188,31 @@ function CalendarView({ calendar, entries, locale, memories, onOpenEntry }: {
     }
     return [...unique.values()];
   }, [calendar, entries, memories]);
-  const selectedItems = selectedDate ? items.filter((item) => item.date === selectedDate) : [];
+  const [occurrences, setOccurrences] = useState<JournalCalendarOccurrence[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    const [year, monthNumber] = month.split('-').map(Number);
+    const rangeEnd = `${month}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, '0')}`;
+    void controller.getCalendar(`${month}-01`, rangeEnd).then((result) => {
+      if (active && result) setOccurrences(result);
+    });
+    return () => { active = false; };
+  }, [controller, month]);
+  const items = occurrences?.map((item) => ({
+    date: item.startDate,
+    endDate: item.endDate,
+    id: item.id,
+    kind: item.kind === 'manualEntry' ? 'entry' as const : item.kind === 'momentMemory' ? 'memory' as const : 'milestone' as const,
+    title: item.kind === 'milestone'
+      ? item.name === 'anniversary' ? t('journal.milestone.anniversary') : `${t('journal.milestone.birthday')} ${item.name}`
+      : item.name,
+  })) ?? fallbackItems.map((item) => ({ ...item, endDate: item.date }));
+  const selectedItems = selectedDate ? items.filter((item) => item.date <= selectedDate && item.endDate >= selectedDate) : [];
   const move = (offset: number) => {
     const [year, monthNumber] = month.split('-').map(Number);
     const next = new Date(year, monthNumber - 1 + offset, 1);
     setMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`);
+    setOccurrences(null);
     setSelectedDate(null);
   };
   const weekday = Array.from({ length: 7 }, (_, index) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
@@ -203,7 +224,7 @@ function CalendarView({ calendar, entries, locale, memories, onOpenEntry }: {
         <View style={styles.calendarGrid}>{weekday.map((label, index) => <Text key={`${label}-${index}`} style={styles.weekday}>{label}</Text>)}{days.map((date, index) => date ? (
           <Pressable key={date} onPress={() => setSelectedDate(date)} style={[styles.day, selectedDate === date && styles.daySelected]}>
             <Text style={[styles.dayText, selectedDate === date && styles.dayTextSelected]}>{Number(date.slice(-2))}</Text>
-            {items.some((item) => item.date === date) ? <View style={styles.dayDot} /> : null}
+            {items.some((item) => item.date <= date && item.endDate >= date) ? <View style={styles.dayDot} /> : null}
           </Pressable>
         ) : <View key={`blank-${index}`} style={styles.day} />)}</View>
       </View>

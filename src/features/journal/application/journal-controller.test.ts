@@ -28,7 +28,9 @@ const entry: JournalEntry = {
 
 class Repository implements JournalRepository {
   access = { canCreate: true, freeEntryConsumed: false, isPremium: false, readOnly: false };
+  createError: JournalError | null = null;
   entries = [entry];
+  requestIds: string[] = [];
 
   async getEntries() {
     return this.entries;
@@ -38,7 +40,13 @@ class Repository implements JournalRepository {
     return this.access;
   }
 
-  async createEntry(input: JournalEntryInput) {
+  async createEntry(input: JournalEntryInput, requestId: string) {
+    this.requestIds.push(requestId);
+    if (this.createError) {
+      const error = this.createError;
+      this.createError = null;
+      throw error;
+    }
     const created = {
       ...entry,
       body: input.body || null,
@@ -149,5 +157,20 @@ describe('JournalController', () => {
       entries: [{ title: 'Lisboa', version: 1 }],
       error: 'conflict',
     });
+  });
+
+  it('reuses the creation key after an uncertain network response', async () => {
+    const repository = new Repository();
+    repository.createError = new JournalError('network');
+    const controller = new JournalController(repository, () => 'stable-request');
+    await controller.start();
+    const input: JournalEntryInput = {
+      body: '', endDate: null, location: null, mediaCount: 0, recurrence: 'once',
+      startDate: '2026-09-10', startTime: null, timeZone: 'Europe/Madrid', title: 'París', widgetHidden: false,
+    };
+
+    expect(await controller.createEntry(input)).toBeNull();
+    expect((await controller.createEntry(input))?.id).toBe('entry-2');
+    expect(repository.requestIds).toEqual(['stable-request', 'stable-request']);
   });
 });

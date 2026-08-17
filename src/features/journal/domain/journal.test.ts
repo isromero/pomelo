@@ -148,8 +148,8 @@ describe('Journal Entry dates', () => {
     const visible = { ...entry, id: 'visible-entry', widgetHidden: false };
 
     expect(nextWidgetOccurrence([hidden, visible], [
-      { endDate: '2026-08-20', id: hidden.id, kind: 'entry', name: hidden.title, startDate: '2026-08-20' },
-      { endDate: '2026-08-21', id: visible.id, kind: 'entry', name: visible.title, startDate: '2026-08-21' },
+      { endDate: '2026-08-20', id: hidden.id, kind: 'entry', name: hidden.title, startDate: '2026-08-20', startTime: null, timeZone: hidden.timeZone },
+      { endDate: '2026-08-21', id: visible.id, kind: 'entry', name: visible.title, startDate: '2026-08-21', startTime: null, timeZone: visible.timeZone },
     ])?.id).toBe(visible.id);
   });
 

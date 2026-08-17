@@ -92,6 +92,16 @@ export type UpcomingOccurrence = {
   kind: 'entry' | 'milestone';
   name: string;
   startDate: string;
+  startTime: string | null;
+  timeZone: string | null;
+};
+
+export type JournalCalendarOccurrence = {
+  endDate: string;
+  id: string;
+  kind: 'manualEntry' | 'milestone' | 'momentMemory';
+  name: string;
+  startDate: string;
 };
 
 export type JournalMapEntry = {
@@ -238,6 +248,8 @@ export function projectJournal({
       id: entry.id,
       kind: 'entry' as const,
       name: entry.title,
+      startTime: entry.startTime,
+      timeZone: entry.timeZone,
     }];
   });
   const upcomingMilestones = milestones.flatMap((milestone) => {
@@ -249,11 +261,15 @@ export function projectJournal({
         kind: 'milestone' as const,
         name: milestone.name,
         startDate: date,
+        startTime: null,
+        timeZone: null,
       }]
       : [];
   });
   const upcoming = [...upcomingEntries, ...upcomingMilestones]
-    .sort((left, right) => left.startDate.localeCompare(right.startDate) || left.id.localeCompare(right.id));
+    .sort((left, right) => left.startDate.localeCompare(right.startDate)
+      || (left.startTime ?? '24:00').localeCompare(right.startTime ?? '24:00')
+      || left.id.localeCompare(right.id));
 
   const map = entries
     .filter((entry): entry is JournalEntry & { location: JournalLocation } => entry.location !== null)
