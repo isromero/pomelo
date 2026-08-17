@@ -8,8 +8,9 @@ import { useAppearance } from '@/appearance/appearance-provider';
 import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, type SemanticColors } from '@/constants/pomelo-theme';
-import { useAccount } from '@/features/account/presentation/account-provider';
+import { useAccount } from '@/features/account/account-api';
 import type { JournalCalendarOccurrence, JournalEntry, JournalHistoryItem, JournalProjection, UpcomingOccurrence } from '@/features/journal/domain/journal';
+import { formatJournalDate, formatJournalDateRange } from '@/features/journal/presentation/journal-date';
 import { JournalEditor } from '@/features/journal/presentation/journal-editor';
 import { JournalMap } from '@/features/journal/presentation/journal-map';
 import { useJournal } from '@/features/journal/presentation/journal-provider';
@@ -18,14 +19,6 @@ import { ThreadPanel, useMoment } from '@/features/moment/moment-api';
 import { useLocale } from '@/localization/locale-provider';
 
 type DiaryView = 'history' | 'calendar' | 'map';
-
-function formatDate(value: string, locale: 'es' | 'en', monthOnly = false) {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Intl.DateTimeFormat(locale, monthOnly
-    ? { month: 'long', year: 'numeric' }
-    : { day: 'numeric', month: 'short', year: 'numeric' })
-    .format(new Date(year, month - 1, day || 1, 12));
-}
 
 export function DiaryScreen() {
   const params = useLocalSearchParams<{ entryId?: string; view?: string }>();
@@ -45,9 +38,12 @@ export function DiaryScreen() {
     ? journal.entries.find((candidate) => candidate.id === editing.id) ?? editing
     : null;
   const copy = {
+    addEntry: t('journal.accessibility.addEntry'),
     by: t('journal.by'), calendar: t('journal.calendar'), close: t('common.close'), edit: t('journal.edit'),
+    doodle: t('moment.kind.doodle'),
     empty: t('journal.empty'), history: t('journal.history'), lived: t('journal.lived'), map: t('journal.map'),
-    memory: t('journal.memory'), next: t('journal.next'), partner: t('journal.partner'), subtitle: t('journal.subtitle'),
+    memory: t('journal.memory'), next: t('journal.next'), partner: t('journal.partner'), photo: t('moment.kind.photo'),
+    question: t('moment.kind.question'), subtitle: t('journal.subtitle'),
     title: t('journal.title'), upcoming: t('journal.upcoming'), you: t('journal.you'),
   };
 
@@ -69,7 +65,7 @@ export function DiaryScreen() {
             <Text style={styles.title}>{copy.title}</Text>
             <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
-          <Pressable accessibilityRole="button" onPress={() => openEditor(null)} style={styles.add}>
+          <Pressable accessibilityLabel={copy.addEntry} accessibilityRole="button" onPress={() => openEditor(null)} style={styles.add}>
             <Ionicons color={colors.white} name="add" size={25} />
           </Pressable>
         </View>
@@ -99,7 +95,7 @@ export function DiaryScreen() {
               <Pressable onPress={() => { const entry = selected; setSelectedId(null); openEditor(entry); }}><Text style={styles.detailAction}>{copy.edit}</Text></Pressable>
             </View>
             <ScrollView contentContainerStyle={styles.detailContent}>
-              <Text style={styles.detailDate}>{formatDate(selected.startDate, locale)} · {selected.startDate > new Date().toISOString().slice(0, 10) ? copy.upcoming : copy.lived}</Text>
+              <Text style={styles.detailDate}>{formatJournalDateRange(selected.startDate, selected.endDate, selected.startTime, locale)} · {selected.startDate > new Date().toISOString().slice(0, 10) ? copy.upcoming : copy.lived}</Text>
               <Text style={styles.detailTitle}>{selected.title}</Text>
               {selected.body ? <Text style={styles.detailBody}>{selected.body}</Text> : null}
               {selected.location ? <View style={styles.place}><Ionicons color={colors.actionDeep} name="location" size={18} /><Text style={styles.placeText}>{selected.location.label}</Text></View> : null}
@@ -132,7 +128,7 @@ function HistoryView({ copy, entries, items, locale, memories, onOpenEntry, upco
         <ScrollView horizontal contentContainerStyle={styles.upcomingRow} showsHorizontalScrollIndicator={false}>
           {upcoming.map((item) => (
             <Pressable disabled={item.kind === 'milestone'} key={`${item.kind}-${item.id}-${item.startDate}`} onPress={() => onOpenEntry(item.id)} style={styles.upcomingCard}>
-              <Text style={styles.upcomingDate}>{formatDate(item.startDate, locale)}</Text>
+              <Text style={styles.upcomingDate}>{formatJournalDate(item.startDate, locale)}</Text>
               <Text numberOfLines={2} style={styles.upcomingName}>{item.name}</Text>
               <Ionicons color={colors.action} name={item.kind === 'milestone' ? 'gift-outline' : 'navigate-outline'} size={18} />
             </Pressable>
@@ -145,11 +141,30 @@ function HistoryView({ copy, entries, items, locale, memories, onOpenEntry, upco
           const entry = item.kind === 'entry' ? entries.find((candidate) => candidate.id === item.id) : null;
           const memory = item.kind === 'memory' ? memories.find((candidate) => candidate.id === item.id) : null;
           if (!entry && !memory) return null;
+          const format = memory?.format ?? 'question';
+          const formatLabel = format === 'photo' ? copy.photo : format === 'doodle' ? copy.doodle : copy.question;
+          const formatIcon = format === 'photo' ? 'camera-outline' : format === 'doodle' ? 'brush-outline' : 'help-outline';
           return (
             <Pressable key={`${item.kind}-${item.id}`} onPress={() => item.kind === 'entry' ? onOpenEntry(item.id) : router.push({ pathname: '/history', params: { memoryId: item.id } })} style={styles.timelineRow}>
-              <View style={[styles.timelineDot, item.kind === 'memory' && styles.pomDot]}>{item.kind === 'memory' ? <Text style={styles.pomMark}>P</Text> : null}</View>
+              <View style={[
+                styles.timelineDot,
+                item.kind === 'memory' && styles.pomDot,
+                item.kind === 'memory' && format === 'photo' && styles.photoDot,
+                item.kind === 'memory' && format === 'doodle' && styles.doodleDot,
+              ]}>
+                {item.kind === 'memory' ? <Ionicons color={colors.white} name={formatIcon} size={11} /> : null}
+              </View>
               <View style={styles.historyCard}>
-                <Text style={styles.historyDate}>{formatDate(item.date, locale)}</Text>
+                <Text style={styles.historyDate}>{formatJournalDate(item.date, locale)}</Text>
+                {memory ? (
+                  <View style={[
+                    styles.historyFormat,
+                    format === 'photo' && styles.historyFormatPhoto,
+                    format === 'doodle' && styles.historyFormatDoodle,
+                  ]}>
+                    <Text style={styles.historyFormatText}>{formatLabel}</Text>
+                  </View>
+                ) : null}
                 <Text style={styles.historyTitle}>{entry?.title ?? memory?.prompt.text ?? copy.memory}</Text>
                 <Text numberOfLines={2} style={styles.historyBody}>{entry?.body ?? (memory ? copy.memory : '')}</Text>
               </View>
@@ -220,7 +235,7 @@ function CalendarView({ calendar, controller, entries, locale, memories, onOpenE
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.calendarCard}>
-        <View style={styles.calendarHeader}><Pressable onPress={() => move(-1)}><Ionicons color={colors.ink} name="chevron-back" size={22} /></Pressable><Text style={styles.calendarMonth}>{formatDate(`${month}-01`, locale, true)}</Text><Pressable onPress={() => move(1)}><Ionicons color={colors.ink} name="chevron-forward" size={22} /></Pressable></View>
+        <View style={styles.calendarHeader}><Pressable accessibilityLabel={t('journal.accessibility.previousMonth')} accessibilityRole="button" onPress={() => move(-1)}><Ionicons color={colors.ink} name="chevron-back" size={22} /></Pressable><Text style={styles.calendarMonth}>{formatJournalDate(`${month}-01`, locale, true)}</Text><Pressable accessibilityLabel={t('journal.accessibility.nextMonth')} accessibilityRole="button" onPress={() => move(1)}><Ionicons color={colors.ink} name="chevron-forward" size={22} /></Pressable></View>
         <View style={styles.calendarGrid}>{weekday.map((label, index) => <Text key={`${label}-${index}`} style={styles.weekday}>{label}</Text>)}{days.map((date, index) => date ? (
           <Pressable key={date} onPress={() => setSelectedDate(date)} style={[styles.day, selectedDate === date && styles.daySelected]}>
             <Text style={[styles.dayText, selectedDate === date && styles.dayTextSelected]}>{Number(date.slice(-2))}</Text>
@@ -228,7 +243,7 @@ function CalendarView({ calendar, controller, entries, locale, memories, onOpenE
           </Pressable>
         ) : <View key={`blank-${index}`} style={styles.day} />)}</View>
       </View>
-      {selectedDate ? <Text style={styles.sectionLabel}>{formatDate(selectedDate, locale)}</Text> : null}
+      {selectedDate ? <Text style={styles.sectionLabel}>{formatJournalDate(selectedDate, locale)}</Text> : null}
       {selectedItems.map((item) => (
         <Pressable disabled={item.kind === 'milestone'} key={`${item.kind}-${item.id}`} onPress={() => item.kind === 'entry' ? onOpenEntry(item.id) : router.push({ pathname: '/history', params: { memoryId: item.id } })} style={styles.calendarItem}>
           <Ionicons color={colors.actionDeep} name={item.kind === 'milestone' ? 'gift-outline' : item.kind === 'memory' ? 'sparkles-outline' : 'book-outline'} size={20} />
@@ -252,9 +267,9 @@ const createStyles = (colors: SemanticColors) => StyleSheet.create({
   detailDate: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 11, textTransform: 'uppercase' }, detailHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 20 }, detailPhotos: { gap: 10 }, detailScreen: { backgroundColor: colors.background, flex: 1 },
   detailTitle: { color: colors.ink, fontFamily: fonts.displayExtraBold, fontSize: 34, lineHeight: 37 }, empty: { color: colors.inkSecondary, fontFamily: fonts.bodyMedium, marginLeft: 30, padding: 20 },
   headingCopy: { flex: 1, gap: 2 }, headingRow: { alignItems: 'center', flexDirection: 'row', gap: 12 }, historyBody: { color: colors.inkSecondary, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 }, historyCard: { backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: 20, borderWidth: 1, flex: 1, gap: 4, padding: 15 },
-  historyDate: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10, textTransform: 'uppercase' }, historyTitle: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 18 }, line: { backgroundColor: colors.border, bottom: 12, left: 10, position: 'absolute', top: 12, width: 2 },
+  historyDate: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10, textTransform: 'uppercase' }, historyFormat: { alignSelf: 'flex-start', backgroundColor: colors.actionSoft, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }, historyFormatDoodle: { backgroundColor: colors.rewardSoft }, historyFormatPhoto: { backgroundColor: colors.informativeSoft }, historyFormatText: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 8, letterSpacing: 0.3 }, historyTitle: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 18 }, line: { backgroundColor: colors.border, bottom: 12, left: 10, position: 'absolute', top: 12, width: 2 },
   loader: { flex: 1 }, mapContent: { paddingBottom: 18 }, place: { alignItems: 'center', backgroundColor: colors.actionSoft, borderRadius: 16, flexDirection: 'row', gap: 7, padding: 12 }, placeText: { color: colors.actionDeep, flex: 1, fontFamily: fonts.bodySemiBold, fontSize: 12 },
-  pomDot: { backgroundColor: colors.reward, borderColor: colors.surface }, pomMark: { color: colors.ink, fontFamily: fonts.displayExtraBold, fontSize: 9 }, screen: { backgroundColor: colors.background, flex: 1 },
+  doodleDot: { backgroundColor: colors.reward }, photoDot: { backgroundColor: colors.informative }, pomDot: { backgroundColor: colors.action, borderColor: colors.surface }, screen: { backgroundColor: colors.background, flex: 1 },
   sectionLabel: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.7, textTransform: 'uppercase' }, segment: { alignItems: 'center', borderRadius: 14, flex: 1, paddingVertical: 9 }, segmentActive: { backgroundColor: colors.surfaceStrong },
   segmented: { backgroundColor: colors.backgroundRaised, borderRadius: 17, flexDirection: 'row', padding: 4 }, segmentText: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 11 }, segmentTextActive: { color: colors.actionDeep },
   shell: { flex: 1, gap: 14, paddingHorizontal: 20 }, subtitle: { color: colors.inkSecondary, fontFamily: fonts.body, fontSize: 12 }, timeline: { gap: 10, position: 'relative' }, timelineDot: { alignItems: 'center', backgroundColor: colors.action, borderColor: colors.background, borderRadius: 11, borderWidth: 3, height: 22, justifyContent: 'center', marginTop: 14, width: 22, zIndex: 1 },

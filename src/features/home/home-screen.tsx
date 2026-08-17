@@ -15,7 +15,8 @@ import { useAppearance } from '@/appearance/appearance-provider';
 import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
-import { useAccount } from '@/features/account/presentation/account-provider';
+import { useAccount } from '@/features/account/account-api';
+import { hasNewMemory } from '@/features/home/reveal-reaction';
 import {
   createDevelopmentPhotoDraft,
   DailyMomentCard,
@@ -164,6 +165,7 @@ export function HomeScreen({
   const [pomReaction, setPomReaction] = useState<'idle' | 'reveal'>('idle');
   const [paywallPending, setPaywallPending] = useState(false);
   const paywallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const memoryIdsRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     if (
@@ -203,19 +205,28 @@ export function HomeScreen({
   }, [pomReaction]);
 
   useEffect(() => {
+    if (momentRuntime.status !== 'ready') {
+      return;
+    }
+    if (hasNewMemory(memoryIdsRef.current, momentRuntime.history)) {
+      setPomReaction('reveal');
+    }
+    memoryIdsRef.current = new Set(momentRuntime.history.map((memory) => memory.id));
+  }, [momentRuntime.history, momentRuntime.status]);
+
+  useEffect(() => {
     if (premium.access === 'premium' && momentRuntime.error === 'premiumRequired') {
       void momentRuntime.controller.refresh();
     }
   }, [momentRuntime.controller, momentRuntime.error, premium.access]);
 
   const revealMoment = async () => {
-    setPomReaction('reveal');
+    const previousMemoryIds = new Set(momentRuntime.history.map((memory) => memory.id));
     await momentRuntime.controller.revealMoment();
-    const revealedMoment = momentRuntime.controller.getSnapshot().moment;
+    const snapshot = momentRuntime.controller.getSnapshot();
     if (
       premium.access !== 'premium' &&
-      revealedMoment?.status === 'revealed' &&
-      revealedMoment.memoryId
+      hasNewMemory(previousMemoryIds, snapshot.history)
     ) {
       setPaywallPending(true);
     }

@@ -103,14 +103,14 @@ export function LocationPicker({ onChange, value }: { onChange(value: JournalLoc
     <View style={styles.picker}>
       <Text style={styles.title}>{copy.title}</Text>
       <View style={styles.searchRow}>
-        <TextInput onChangeText={setQuery} onSubmitEditing={() => void search()} placeholder={copy.search} placeholderTextColor={colors.muted} style={styles.input} value={query} />
-        <Pressable onPress={() => void search()} style={styles.iconButton}><Ionicons color={colors.white} name="search" size={18} /></Pressable>
+        <TextInput accessibilityLabel={copy.search} onChangeText={setQuery} onSubmitEditing={() => void search()} placeholder={copy.search} placeholderTextColor={colors.muted} style={styles.input} value={query} />
+        <Pressable accessibilityLabel={t('journal.accessibility.searchLocation')} accessibilityRole="button" onPress={() => void search()} style={styles.iconButton}><Ionicons color={colors.white} name="search" size={18} /></Pressable>
       </View>
       <View style={styles.mapShell}>
         <MapView onRegionChangeComplete={setRegion} region={region} style={StyleSheet.absoluteFill}>
           <Marker coordinate={region} draggable onDragEnd={(event) => setRegion((current) => ({ ...current, ...event.nativeEvent.coordinate }))} />
         </MapView>
-        <Pressable onPress={() => void recenter()} style={styles.recenter}>
+        <Pressable accessibilityLabel={t('journal.accessibility.currentLocation')} accessibilityRole="button" onPress={() => void recenter()} style={styles.recenter}>
           {busy ? <ActivityIndicator color={colors.actionDeep} size="small" /> : <Ionicons color={colors.actionDeep} name="locate" size={20} />}
         </Pressable>
       </View>

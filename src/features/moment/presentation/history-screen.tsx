@@ -14,7 +14,7 @@ import type { MomentErrorCode } from '@/features/moment/application/moment-contr
 import type { Contribution, DoodleDocument, Memory } from '@/features/moment/domain/moment';
 import { useMoment, useThreadController } from '@/features/moment/presentation/moment-provider';
 import { ThreadPanel } from '@/features/moment/presentation/thread-panel';
-import { useAccount } from '@/features/account/presentation/account-provider';
+import { useAccount } from '@/features/account/account-api';
 import type { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 
@@ -87,9 +87,12 @@ function PhotoMemoryPreview({
   memory: Memory;
 }) {
   const { colors } = useAppearance();
+  const { t } = useLocale();
   const styles = createStyles(colors);
-  const ownPhoto = memory.ownContribution?.photo ?? null;
-  const partnerPhoto = memory.partner.contribution?.photo ?? null;
+  const ownDeleted = memory.ownContribution?.available === false;
+  const partnerDeleted = memory.partner.contribution?.available === false;
+  const ownPhoto = ownDeleted ? null : memory.ownContribution?.photo ?? null;
+  const partnerPhoto = partnerDeleted ? null : memory.partner.contribution?.photo ?? null;
   const [urls, setUrls] = useState<{
     ownFront: string | null;
     ownRear: string | null;
@@ -137,35 +140,44 @@ function PhotoMemoryPreview({
     return (
       <View style={styles.photoPlaceholder}>
         <Ionicons color={colors.muted} name="images-outline" size={24} />
+        {ownDeleted || partnerDeleted ? <Text style={styles.photoDeletedText}>{t('history.deletedContribution')}</Text> : null}
       </View>
     );
   }
   return (
-    <View style={styles.photoComposition}>
-      <View style={styles.photoPrimary}>
-        {(urls.partnerRear ?? urls.ownRear) ? (
-          <Image
-            cachePolicy="none"
-            contentFit="cover"
-            recyclingKey={urls.partnerRear ?? urls.ownRear ?? ''}
-            source={{ uri: urls.partnerRear ?? urls.ownRear ?? '' }}
-            style={styles.photoImage}
-          />
-        ) : null}
-        {(urls.partnerFront ?? urls.ownFront) ? (
-          <Image
-            cachePolicy="none"
-            contentFit="cover"
-            recyclingKey={urls.partnerFront ?? urls.ownFront ?? ''}
-            source={{ uri: urls.partnerFront ?? urls.ownFront ?? '' }}
-            style={urls.partnerFront ? styles.photoPartnerFront : styles.photoOwnFront}
-          />
+    <View style={styles.photoStack}>
+      <View style={styles.photoComposition}>
+        <View style={styles.photoPrimary}>
+          {(urls.partnerRear ?? urls.ownRear) ? (
+            <Image
+              cachePolicy="none"
+              contentFit="cover"
+              recyclingKey={urls.partnerRear ?? urls.ownRear ?? ''}
+              source={{ uri: urls.partnerRear ?? urls.ownRear ?? '' }}
+              style={styles.photoImage}
+            />
+          ) : null}
+          {(urls.partnerFront ?? urls.ownFront) ? (
+            <Image
+              cachePolicy="none"
+              contentFit="cover"
+              recyclingKey={urls.partnerFront ?? urls.ownFront ?? ''}
+              source={{ uri: urls.partnerFront ?? urls.ownFront ?? '' }}
+              style={urls.partnerFront ? styles.photoPartnerFront : styles.photoOwnFront}
+            />
+          ) : null}
+        </View>
+        {ownPhoto && partnerPhoto ? (
+          <View style={styles.photoThumbnail}>
+            {urls.ownRear ? <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.ownRear} source={{ uri: urls.ownRear }} style={styles.photoImage} /> : null}
+            {urls.ownFront ? <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.ownFront} source={{ uri: urls.ownFront }} style={styles.photoOwnFront} /> : null}
+          </View>
         ) : null}
       </View>
-      {ownPhoto && partnerPhoto ? (
-        <View style={styles.photoThumbnail}>
-          {urls.ownRear ? <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.ownRear} source={{ uri: urls.ownRear }} style={styles.photoImage} /> : null}
-          {urls.ownFront ? <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.ownFront} source={{ uri: urls.ownFront }} style={styles.photoOwnFront} /> : null}
+      {ownDeleted || partnerDeleted ? (
+        <View style={styles.photoDeletedBadge}>
+          <Ionicons color={colors.muted} name="image-outline" size={15} />
+          <Text style={styles.photoDeletedText}>{t('history.deletedContribution')}</Text>
         </View>
       ) : null}
     </View>
@@ -458,7 +470,10 @@ const createStyles = (colors: SemanticColors) =>
     conversationText: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
     deletedText: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, fontStyle: 'italic' },
     photoComposition: { aspectRatio: 1.3, flexDirection: 'row', gap: 8 },
+    photoDeletedBadge: { alignItems: 'center', backgroundColor: colors.backgroundRaised, borderRadius: 12, flexDirection: 'row', gap: 7, padding: 10 },
+    photoDeletedText: { color: colors.muted, fontFamily: fonts.bodySemiBold, fontSize: 10 },
     photoPrimary: { backgroundColor: colors.backgroundRaised, borderRadius: 18, flex: 1, overflow: 'hidden' },
+    photoStack: { gap: 8 },
     photoThumbnail: { alignSelf: 'flex-end', backgroundColor: colors.backgroundRaised, borderColor: colors.surface, borderRadius: 13, borderWidth: 3, bottom: 8, height: 72, overflow: 'hidden', position: 'absolute', right: 8, width: 58 },
     photoImage: { height: '100%', width: '100%' },
     photoOwnFront: { borderColor: colors.surface, borderRadius: 5, borderWidth: 1, bottom: 3, height: 30, position: 'absolute', right: 3, width: 24 },

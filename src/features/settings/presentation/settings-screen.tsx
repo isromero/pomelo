@@ -19,7 +19,7 @@ import {
   type DevelopmentToolsErrorCode,
 } from '@/features/development/application/development-tools';
 import { createDevelopmentTools } from '@/features/development/infrastructure/create-development-tools';
-import { useAccount, useAccountClient } from '@/features/account/presentation/account-provider';
+import { useAccount, useAccountClient } from '@/features/account/account-api';
 import { useMoment } from '@/features/moment/moment-api';
 import type { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';

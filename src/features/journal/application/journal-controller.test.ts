@@ -72,6 +72,14 @@ class Repository implements JournalRepository {
     return updated;
   }
 
+  async deleteEntry(entryId: string, version: number) {
+    const selected = this.entries.find((item) => item.id === entryId);
+    if (selected && selected.version !== version) {
+      throw new JournalError('conflict');
+    }
+    this.entries = this.entries.filter((item) => item.id !== entryId);
+  }
+
   subscribe() {
     return () => {};
   }
@@ -92,6 +100,7 @@ describe('JournalController', () => {
         id: 'birthday-user-2',
         kind: 'birthday',
         name: 'Cumpleaños de Alex',
+        timeZone: 'Europe/Madrid',
       }],
       today: '2026-08-17',
     });
@@ -172,5 +181,16 @@ describe('JournalController', () => {
     expect(await controller.createEntry(input)).toBeNull();
     expect((await controller.createEntry(input))?.id).toBe('entry-2');
     expect(repository.requestIds).toEqual(['stable-request', 'stable-request']);
+  });
+
+  it('surfaces a stale delete without removing the current entry', async () => {
+    const controller = new JournalController(new Repository());
+    await controller.start();
+
+    expect(await controller.deleteEntry(entry.id, 0)).toBe(false);
+    expect(controller.getSnapshot()).toMatchObject({
+      entries: [{ id: entry.id, version: 1 }],
+      error: 'conflict',
+    });
   });
 });

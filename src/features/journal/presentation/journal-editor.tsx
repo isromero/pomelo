@@ -52,14 +52,15 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
   const [drafts, setDrafts] = useState<JournalPhotoDraft[]>([]);
   const [savingMedia, setSavingMedia] = useState(false);
   const [expectedVersion] = useState(entry?.version ?? null);
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeZone = entry?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const copy = {
+    addPhotos: t('journal.accessibility.addPhotos'),
     body: t('journal.editor.body'), cancel: t('common.cancel'), confirmDelete: t('journal.editor.confirmDelete'),
     date: t('journal.editor.date'), delete: t('journal.editor.delete'), editTitle: t('journal.editor.edit'),
     end: t('journal.editor.end'), failed: t('journal.editor.failed'), newTitle: t('journal.editor.new'),
     photos: t('journal.editor.photos'), premium: t('journal.editor.premium'), readOnly: t('journal.editor.readOnly'),
     repeat: t('journal.editor.repeat'), save: t('journal.editor.save'), savedPartial: t('journal.editor.partial'),
-    time: t('journal.editor.time'), title: t('journal.editor.title'), widget: t('journal.editor.widget'),
+    removePhoto: t('journal.accessibility.removePhoto'), time: t('journal.editor.time'), title: t('journal.editor.title'), widget: t('journal.editor.widget'),
   };
 
   const selectPhotos = async () => {
@@ -119,7 +120,7 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
     if (!entry) return;
     Alert.alert(copy.delete, copy.confirmDelete, [
       { style: 'cancel', text: copy.cancel },
-      { style: 'destructive', text: copy.delete, onPress: () => void controller.deleteEntry(entry.id).then((deleted) => { if (deleted) onClose(); }) },
+      { style: 'destructive', text: copy.delete, onPress: () => void controller.deleteEntry(entry.id, expectedVersion ?? entry.version).then((deleted) => { if (deleted) onClose(); }) },
     ]);
   };
 
@@ -150,13 +151,13 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
             <View style={dynamic.setting}><Text style={dynamic.settingText}>{copy.repeat}</Text><Switch onValueChange={(enabled) => setRecurrence(enabled ? 'yearly' : 'once')} value={recurrence === 'yearly'} /></View>
             <View style={dynamic.setting}><Text style={dynamic.settingText}>{copy.widget}</Text><Switch onValueChange={setWidgetHidden} value={widgetHidden} /></View>
             <LocationPicker onChange={setLocation} value={location} />
-            <View style={stylesBase.photoHeading}><Text style={dynamic.label}>{copy.photos} ({(entry?.media.length ?? 0) + drafts.length}/10)</Text><Pressable onPress={() => void selectPhotos()}><Ionicons color={colors.actionDeep} name="add-circle" size={25} /></Pressable></View>
+            <View style={stylesBase.photoHeading}><Text style={dynamic.label}>{copy.photos} ({(entry?.media.length ?? 0) + drafts.length}/10)</Text><Pressable accessibilityLabel={copy.addPhotos} accessibilityRole="button" onPress={() => void selectPhotos()}><Ionicons color={colors.actionDeep} name="add-circle" size={25} /></Pressable></View>
             <View style={stylesBase.photos}>
-              {entry?.media.map((media) => <PrivateJournalImage key={media.id} media={media} onRemove={() => void removeExisting(media)} style={stylesBase.photo} />)}
+              {entry?.media.map((media) => <PrivateJournalImage key={media.id} media={media} onRemove={() => void removeExisting(media)} style={dynamic.photo} />)}
               {drafts.map((draft, index) => (
-                <View key={`${draft.uri}-${index}`} style={stylesBase.photo}>
+                <View key={`${draft.uri}-${index}`} style={dynamic.photo}>
                   <Image contentFit="cover" source={{ uri: draft.uri }} style={StyleSheet.absoluteFill} />
-                  <Pressable onPress={() => setDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))} style={stylesBase.photoRemove}><Ionicons color="#FFFFFF" name="close" size={15} /></Pressable>
+                  <Pressable accessibilityLabel={copy.removePhoto} accessibilityRole="button" onPress={() => setDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))} style={dynamic.photoRemove}><Ionicons color={colors.white} name="close" size={15} /></Pressable>
                 </View>
               ))}
             </View>
@@ -170,8 +171,7 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
 
 const stylesBase = StyleSheet.create({
   bodyInput: { minHeight: 100, textAlignVertical: 'top' }, content: { gap: 14, padding: 20, paddingBottom: 60 }, flex: { flex: 1 },
-  photo: { alignItems: 'center', backgroundColor: '#E8E1D2', borderRadius: 14, height: 90, justifyContent: 'center', overflow: 'hidden', width: 90 },
-  photoHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, photoRemove: { alignItems: 'center', backgroundColor: 'rgba(16,36,27,0.75)', borderRadius: 12, height: 24, justifyContent: 'center', position: 'absolute', right: 5, top: 5, width: 24 },
+  photoHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   photos: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 }, row: { flexDirection: 'row', gap: 10 }, screen: { flex: 1 }, small: { width: 120 },
 });
 
@@ -182,6 +182,7 @@ const createStyles = (colors: SemanticColors) => StyleSheet.create({
   error: { color: colors.actionDeep, fontFamily: fonts.bodyMedium, fontSize: 12 },
   heading: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 18 }, input: { backgroundColor: colors.surfaceStrong, borderColor: colors.borderSoft, borderRadius: 16, borderWidth: 1, color: colors.ink, fontFamily: fonts.body, fontSize: 14, minHeight: 50, paddingHorizontal: 14, paddingVertical: 13 },
   label: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 11, marginBottom: 5 }, premium: { backgroundColor: colors.rewardSoft, borderRadius: 16, color: colors.inkSecondary, fontFamily: fonts.bodyMedium, fontSize: 12, padding: 13 },
+  photo: { alignItems: 'center', backgroundColor: colors.backgroundRaised, borderRadius: 14, height: 90, justifyContent: 'center', overflow: 'hidden', width: 90 }, photoRemove: { alignItems: 'center', backgroundColor: colors.scrim, borderRadius: 12, height: 24, justifyContent: 'center', position: 'absolute', right: 5, top: 5, width: 24 },
   save: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 13 }, setting: { alignItems: 'center', backgroundColor: colors.backgroundRaised, borderRadius: 17, flexDirection: 'row', justifyContent: 'space-between', padding: 13 },
   settingText: { color: colors.ink, fontFamily: fonts.bodySemiBold, fontSize: 13 }, titleInput: { fontFamily: fonts.displayBold, fontSize: 20 },
 });

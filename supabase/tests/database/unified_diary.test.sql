@@ -1,6 +1,6 @@
 begin;
 
-select plan(37);
+select plan(41);
 
 select has_table('public', 'journal_entries', 'Journal Entries exist');
 select has_table('public', 'pair_journal_state', 'Pair journal allowance state exists');
@@ -98,7 +98,7 @@ insert into diary_results values (
     1,
     'Lisboa juntos',
     'Editado por los dos.',
-    date '2026-08-10', null, null, 'Europe/Madrid', 'once', false,
+    date '2024-12-31', date '2025-01-02', null, 'Europe/Madrid', 'yearly', false,
     '{"label":"Pin junto al río","latitude":38.7223,"longitude":-9.1393}'::jsonb
   )
 );
@@ -108,12 +108,15 @@ insert into diary_results values (
   'partner-update-retry',
   public.update_journal_entry(
     ((select payload ->> 'id' from diary_results where label = 'created'))::uuid,
-    1, 'Lisboa juntos', 'Editado por los dos.', date '2026-08-10', null, null,
-    'Europe/Madrid', 'once', false,
+    1, 'Lisboa juntos', 'Editado por los dos.', date '2024-12-31', date '2025-01-02', null,
+    'Europe/Madrid', 'yearly', false,
     '{"label":"Pin junto al río","latitude":38.7223,"longitude":-9.1393}'::jsonb
   )
 );
 select is((select payload ->> 'version' from diary_results where label = 'partner-update-retry'), '2', 'retrying the same edit is idempotent');
+insert into diary_results values ('calendar-new-year', public.get_journal_calendar(date '2027-01-01', date '2027-01-31'));
+select is((select payload #>> '{0,startDate}' from diary_results where label = 'calendar-new-year'), '2026-12-31', 'the calendar includes a yearly range that began in the prior year');
+select is((select payload #>> '{0,endDate}' from diary_results where label = 'calendar-new-year'), '2027-01-02', 'the carried yearly range keeps its projected end date');
 
 select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000001', true);
 insert into diary_results values (
@@ -126,6 +129,14 @@ insert into diary_results values (
   )
 );
 select is((select payload ->> 'error' from diary_results where label = 'stale-update'), 'conflict', 'stale writes do not overwrite a partner edit');
+insert into diary_results values (
+  'stale-delete',
+  public.delete_journal_entry(
+    ((select payload ->> 'id' from diary_results where label = 'created'))::uuid,
+    1
+  )
+);
+select is((select payload ->> 'error' from diary_results where label = 'stale-delete'), 'conflict', 'a stale delete does not remove a partner edit');
 
 insert into diary_results values ('map', public.get_journal_map());
 select is(jsonb_array_length((select payload from diary_results where label = 'map')), 1, 'Map contains the located Journal Entry');
@@ -204,9 +215,13 @@ insert into diary_results values (
 select is((select payload ->> 'error' from diary_results where label = 'archived-update'), 'not_allowed', 'an archived Pair rejects content edits');
 insert into diary_results values (
   'deleted',
-  public.delete_journal_entry(((select payload ->> 'id' from diary_results where label = 'created'))::uuid)
+  public.delete_journal_entry(
+    ((select payload ->> 'id' from diary_results where label = 'created'))::uuid,
+    2
+  )
 );
 select is((select payload ->> 'deleted' from diary_results where label = 'deleted'), 'true', 'either member can delete the shared entry');
+select is(jsonb_array_length((select payload -> 'paths' from diary_results where label = 'deleted')), 10, 'deletion returns media paths for post-commit object cleanup');
 insert into diary_results values ('after-delete', public.get_journal_entries());
 select is(jsonb_array_length((select payload -> 'entries' from diary_results where label = 'after-delete')), 0, 'the deleted entry disappears from Diary');
 select is((select payload ->> 'canCreate' from diary_results where label = 'after-delete'), 'false', 'deletion does not restore the free allowance');

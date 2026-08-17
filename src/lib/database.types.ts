@@ -1021,7 +1021,10 @@ export type Database = {
         Args: { pair_anniversary: string }
         Returns: Json
       }
-      delete_journal_entry: { Args: { target_entry_id: string }; Returns: Json }
+      delete_journal_entry: {
+        Args: { expected_version: number; target_entry_id: string }
+        Returns: Json
+      }
       dissolve_pair: { Args: never; Returns: Json }
       get_daily_moment: { Args: never; Returns: Json }
       get_daily_moment_legacy: { Args: never; Returns: Json }

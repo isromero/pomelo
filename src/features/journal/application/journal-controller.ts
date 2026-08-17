@@ -30,7 +30,7 @@ export interface JournalRepository {
   getAccess?(): Promise<JournalAccess>;
   createEntry?(input: JournalEntryInput, requestId: string): Promise<JournalEntry>;
   updateEntry?(entryId: string, version: number, input: JournalEntryInput): Promise<JournalEntry>;
-  deleteEntry?(entryId: string): Promise<void>;
+  deleteEntry?(entryId: string, version: number): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
 
@@ -189,14 +189,14 @@ export class JournalController {
     }
   }
 
-  async deleteEntry(entryId: string) {
+  async deleteEntry(entryId: string, version: number) {
     if (!this.repository.deleteEntry) {
       this.update({ error: 'configuration' });
       return false;
     }
     this.update({ busy: true, error: null });
     try {
-      await this.repository.deleteEntry(entryId);
+      await this.repository.deleteEntry(entryId, version);
       this.replaceEntries(this.snapshot.entries.filter((item) => item.id !== entryId));
       this.update({ busy: false });
       return true;

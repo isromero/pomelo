@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 
-import { useAccount, useAccountClient } from '@/features/account/presentation/account-provider';
+import { useAccount, useAccountClient } from '@/features/account/account-api';
 import { createPremiumRuntime } from '@/features/premium/infrastructure/create-premium-controller';
 
 export type { PremiumErrorCode } from '@/features/premium/application/premium-controller';

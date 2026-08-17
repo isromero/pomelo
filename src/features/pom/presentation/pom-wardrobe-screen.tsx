@@ -7,12 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppearance } from '@/appearance/appearance-provider';
 import { AppHeader } from '@/components/pomelo/app-header';
 import { fonts, radii, type SemanticColors } from '@/constants/pomelo-theme';
+import { useAccount } from '@/features/account/account-api';
+import type { PairStatus } from '@/features/pair/pair-api';
 import { ACCESSORY_MILESTONES, type AccessoryId } from '@/features/pom/domain/progress';
-import { usePomProgress } from '@/features/pom/presentation/progress-provider';
-import { useAccount } from '@/features/account/presentation/account-provider';
-import type { PairStatus } from '@/features/pair/application/pair-controller';
-import { useLocale } from '@/localization/locale-provider';
 import { PomDisplay } from '@/features/pom/presentation/pom-display';
+import { usePomProgress } from '@/features/pom/presentation/progress-provider';
+import { useLocale } from '@/localization/locale-provider';
 
 const accessoryNames: Record<AccessoryId, 'pom.accessory.crown' | 'pom.accessory.ribbon' | 'pom.accessory.scarf' | 'pom.accessory.sunhat'> = {
   crown: 'pom.accessory.crown',
@@ -185,7 +185,7 @@ const createStyles = (colors: SemanticColors) =>
     option: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: radii.md, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 68, paddingHorizontal: 12 },
     optionSelected: { backgroundColor: colors.action, borderColor: colors.action },
     optionIcon: { alignItems: 'center', backgroundColor: colors.actionSoft, borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
-    optionIconSelected: { backgroundColor: 'rgba(255,255,255,0.22)' },
+    optionIconSelected: { backgroundColor: colors.actionOverlay },
     optionCopy: { flex: 1, gap: 3 },
     optionTitle: { color: colors.ink, fontFamily: fonts.bodyBold, fontSize: 12 },
     optionDisabled: { color: colors.muted },

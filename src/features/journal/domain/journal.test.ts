@@ -55,6 +55,20 @@ describe('Journal Entry dates', () => {
     expect(recurring.id).toBe('entry-1');
   });
 
+  it('keeps a yearly range active when it began in the prior calendar year', () => {
+    const recurring = {
+      ...entry,
+      endDate: '2025-01-02',
+      recurrence: 'yearly' as const,
+      startDate: '2024-12-31',
+    };
+
+    expect(nextJournalOccurrence(recurring, '2026-01-01')).toEqual({
+      endDate: '2026-01-02',
+      startDate: '2025-12-31',
+    });
+  });
+
   it('combines Memories and entries while keeping ritual Memories off Map', () => {
     const livedEntry = {
       ...entry,
@@ -95,6 +109,7 @@ describe('Journal Entry dates', () => {
         id: 'birthday-user-2',
         kind: 'birthday',
         name: 'Cumpleaños de Alex',
+        timeZone: 'Europe/Madrid',
       }],
       today: '2026-08-17',
     });
@@ -178,5 +193,23 @@ describe('Journal Entry dates', () => {
     }));
 
     expect(nextWidgetOccurrence([tokyo, madrid], occurrences, new Date('2026-08-20T01:00:00Z'))?.id).toBe('madrid');
+  });
+
+  it('evaluates milestones in the Pair time zone', () => {
+    const projection = projectJournal({
+      entries: [],
+      memories: [],
+      milestones: [{
+        date: '1994-08-25',
+        id: 'birthday-user-2',
+        kind: 'birthday',
+        name: 'Birthday',
+        timeZone: 'Pacific/Kiritimati',
+      }],
+      today: '2026-08-25',
+    });
+
+    expect(projection.upcoming[0]).toMatchObject({ timeZone: 'Pacific/Kiritimati' });
+    expect(nextWidgetOccurrence([], projection.upcoming, new Date('2026-08-25T12:00:00Z'))).toBeNull();
   });
 });

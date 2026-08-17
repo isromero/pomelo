@@ -78,6 +78,7 @@ export type JournalMilestone = {
   id: string;
   kind: 'anniversary' | 'birthday';
   name: string;
+  timeZone: string;
 };
 
 export type JournalHistoryItem = {
@@ -235,24 +236,24 @@ export function nextJournalOccurrence(
   }
 
   const durationDays = Math.round((originalEnd.getTime() - originalStart.getTime()) / 86_400_000);
-  let occurrenceStart = dateInYear(entry.startDate, todayDate.getUTCFullYear());
-  if (!occurrenceStart) {
-    return null;
-  }
-  let occurrenceEnd = new Date(occurrenceStart);
-  occurrenceEnd.setUTCDate(occurrenceEnd.getUTCDate() + durationDays);
-  if (formatDateOnly(occurrenceEnd) < today) {
-    occurrenceStart = dateInYear(entry.startDate, todayDate.getUTCFullYear() + 1);
+  for (let year = todayDate.getUTCFullYear() - 1; year <= todayDate.getUTCFullYear() + 1; year += 1) {
+    const occurrenceStart = dateInYear(entry.startDate, year);
     if (!occurrenceStart) {
-      return null;
+      continue;
     }
-    occurrenceEnd = new Date(occurrenceStart);
+    if (occurrenceStart < originalStart) {
+      continue;
+    }
+    const occurrenceEnd = new Date(occurrenceStart);
     occurrenceEnd.setUTCDate(occurrenceEnd.getUTCDate() + durationDays);
+    if (formatDateOnly(occurrenceEnd) >= today) {
+      return {
+        endDate: formatDateOnly(occurrenceEnd),
+        startDate: formatDateOnly(occurrenceStart),
+      };
+    }
   }
-  return {
-    endDate: formatDateOnly(occurrenceEnd),
-    startDate: formatDateOnly(occurrenceStart),
-  };
+  return null;
 }
 
 export function projectJournal({
@@ -301,7 +302,7 @@ export function projectJournal({
         name: milestone.name,
         startDate: date,
         startTime: null,
-        timeZone: null,
+        timeZone: milestone.timeZone,
       }]
       : [];
   });

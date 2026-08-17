@@ -237,16 +237,22 @@ export class SupabaseJournalRepository implements JournalRepository, ThreadRepos
     return this.entryResult(data, error);
   }
 
-  async deleteEntry(entryId: string) {
-    const entry = (await this.getEntries()).find((candidate) => candidate.id === entryId);
-    if (entry?.media.length) {
-      await this.client.storage.from(JOURNAL_MEDIA_BUCKET).remove(entry.media.map((media) => media.path));
-    }
-    const { data, error } = await this.client.rpc('delete_journal_entry', { target_entry_id: entryId });
+  async deleteEntry(entryId: string, version: number) {
+    const { data, error } = await this.client.rpc('delete_journal_entry', {
+      expected_version: version,
+      target_entry_id: entryId,
+    } as never);
     const transport = transportFailure(error);
     if (transport) throw transport;
     const application = journalFailure(data);
     if (application) throw application;
+    if (!isObject(data) || data.deleted !== true || !Array.isArray(data.paths)
+      || data.paths.some((path) => typeof path !== 'string')) {
+      throw new JournalError('unexpected');
+    }
+    if (data.paths.length) {
+      await this.removeStorageObjects(data.paths as string[]);
+    }
   }
 
   async addPhoto(entry: JournalEntry, draft: JournalPhotoDraft, position: number, clientMediaId: string) {
@@ -264,27 +270,44 @@ export class SupabaseJournalRepository implements JournalRepository, ThreadRepos
       upsert: false,
     });
     if (upload.error) throw new JournalError('network');
-    const { data, error } = await this.client.rpc('add_journal_entry_media', {
-      target_client_media_id: clientMediaId,
-      target_entry_id: entry.id,
-      target_height: saved.height,
-      target_position: position,
-      target_storage_path: path,
-      target_width: saved.width,
-    });
-    const failure = transportFailure(error) ?? journalFailure(data);
-    if (failure) {
-      await this.client.storage.from(JOURNAL_MEDIA_BUCKET).remove([path]);
-      throw failure;
+    let lastTransport: JournalError | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { data, error } = await this.client.rpc('add_journal_entry_media', {
+        target_client_media_id: clientMediaId,
+        target_entry_id: entry.id,
+        target_height: saved.height,
+        target_position: position,
+        target_storage_path: path,
+        target_width: saved.width,
+      });
+      const transport = transportFailure(error);
+      if (transport) {
+        lastTransport = transport;
+        continue;
+      }
+      const application = journalFailure(data);
+      if (application) {
+        await this.removeStorageObjects([path]);
+        throw application;
+      }
+      if (!isObject(data) || typeof data.id !== 'string' || data.path !== path) {
+        throw new JournalError('unexpected');
+      }
+      return;
     }
+    throw lastTransport ?? new JournalError('network');
   }
 
   async removePhoto(media: JournalMedia) {
-    const storage = await this.client.storage.from(JOURNAL_MEDIA_BUCKET).remove([media.path]);
-    if (storage.error) throw new JournalError('network');
     const { data, error } = await this.client.rpc('remove_journal_entry_media', { target_media_id: media.id });
     const failure = transportFailure(error) ?? journalFailure(data);
     if (failure) throw failure;
+    if (!isObject(data) || data.removed !== true || (data.path !== undefined && data.path !== media.path)) {
+      throw new JournalError('unexpected');
+    }
+    if (data.path === media.path) {
+      await this.removeStorageObjects([media.path]);
+    }
   }
 
   async createMediaUrl(path: string) {
@@ -333,5 +356,13 @@ export class SupabaseJournalRepository implements JournalRepository, ThreadRepos
     const failure = transportFailure(error) ?? journalFailure(data);
     if (failure) throw failure;
     return parseEntry(data);
+  }
+
+  private async removeStorageObjects(paths: string[]) {
+    try {
+      await this.client.storage.from(JOURNAL_MEDIA_BUCKET).remove(paths);
+    } catch {
+      return;
+    }
   }
 }

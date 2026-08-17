@@ -6,6 +6,7 @@ import MapView, { Marker } from 'react-native-maps';
 import { useAppearance } from '@/appearance/appearance-provider';
 import { fonts, type SemanticColors } from '@/constants/pomelo-theme';
 import type { JournalMapEntry } from '@/features/journal/domain/journal';
+import { formatJournalDate } from '@/features/journal/presentation/journal-date';
 import { useLocale } from '@/localization/locale-provider';
 
 type Filter = 'lived' | 'upcoming';
@@ -21,7 +22,7 @@ function cluster(entries: JournalMapEntry[]) {
 
 export function JournalMap({ entries, onOpen }: { entries: JournalMapEntry[]; onOpen(id: string): void }) {
   const { colors } = useAppearance();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const styles = createStyles(colors);
   const mapRef = useRef<MapView>(null);
   const [filters, setFilters] = useState<Filter[]>(['lived', 'upcoming']);
@@ -114,7 +115,7 @@ export function JournalMap({ entries, onOpen }: { entries: JournalMapEntry[]; on
             {selected.map((entry) => (
               <Pressable key={entry.id} onPress={() => onOpen(entry.id)} style={styles.sheetRow}>
                 <View style={styles.sheetCopy}>
-                  <Text style={styles.sheetDate}>{entry.startDate} - {entry.state === 'upcoming' ? copy.upcoming : copy.lived}</Text>
+                  <Text style={styles.sheetDate}>{formatJournalDate(entry.startDate, locale)} - {entry.state === 'upcoming' ? copy.upcoming : copy.lived}</Text>
                   <Text style={styles.sheetTitle}>{entry.title}</Text>
                   <Text numberOfLines={1} style={styles.sheetPlace}>{entry.location.label}</Text>
                 </View>

@@ -4,11 +4,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppearance } from '@/appearance/appearance-provider';
 import { fonts } from '@/constants/pomelo-theme';
 import type { JournalMapEntry } from '@/features/journal/domain/journal';
+import { formatJournalDate } from '@/features/journal/presentation/journal-date';
 import { useLocale } from '@/localization/locale-provider';
 
 export function JournalMap({ entries, onOpen }: { entries: JournalMapEntry[]; onOpen(id: string): void }) {
   const { colors } = useAppearance();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   return (
     <View style={styles.shell}>
       <View style={[styles.notice, { backgroundColor: colors.informativeSoft }]}>
@@ -22,7 +23,7 @@ export function JournalMap({ entries, onOpen }: { entries: JournalMapEntry[]; on
             <Text style={[styles.title, { color: colors.ink }]}>{entry.title}</Text>
             <Text style={[styles.place, { color: colors.inkSecondary }]}>{entry.location.label}</Text>
           </View>
-          <Text style={[styles.date, { color: colors.actionDeep }]}>{entry.startDate}</Text>
+          <Text style={[styles.date, { color: colors.actionDeep }]}>{formatJournalDate(entry.startDate, locale)}</Text>
         </Pressable>
       ))}
     </View>
