@@ -23,7 +23,7 @@ import {
 } from '@/features/account/presentation/account-provider';
 import { MomentProvider } from '@/features/moment/moment-api';
 import { JournalProvider } from '@/features/journal/journal-api';
-import { PomProgressProvider } from '@/features/pom/presentation/progress-provider';
+import { PomProgressProvider } from '@/features/pom/pom-api';
 import { PairProvider, usePair } from '@/features/pair/presentation/pair-provider';
 import { PremiumProvider } from '@/features/premium/presentation/premium-provider';
 import { LocaleProvider, useLocale } from '@/localization/locale-provider';

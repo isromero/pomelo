@@ -2,10 +2,8 @@ import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { useJournal } from '@/features/journal/journal-api';
-import { nextWidgetOccurrence } from '@/features/journal/domain/journal';
-import { usePomProgress } from '@/features/pom/presentation/progress-provider';
-import type { AccessoryId } from '@/features/pom/domain/progress';
+import { nextWidgetOccurrence, useJournal } from '@/features/journal/journal-api';
+import { type AccessoryId, usePomProgress } from '@/features/pom/pom-api';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
 import { captureDiagnostic } from '@/lib/diagnostics';
 import { useLocale } from '@/localization/locale-provider';

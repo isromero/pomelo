@@ -16,18 +16,18 @@ import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, radii, SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import type { MomentErrorCode } from '@/features/moment/application/moment-controller';
 import {
+  createDevelopmentPhotoDraft,
+  DailyMomentCard,
   initialStreakState,
   type DailyMoment,
   type Memory,
-} from '@/features/moment/domain/moment';
-import { createDevelopmentPhotoDraft } from '@/features/moment/infrastructure/development-test-photos';
-import { DailyMomentCard } from '@/features/moment/presentation/daily-moment-card';
-import { useDoodleMoment, useMoment } from '@/features/moment/moment-api';
-import { PomDisplay } from '@/features/pom/presentation/pom-display';
-import { usePomProgress } from '@/features/pom/presentation/progress-provider';
-import type { PairStatus } from '@/features/pair/application/pair-controller';
+  type MomentErrorCode,
+  useDoodleMoment,
+  useMoment,
+} from '@/features/moment/moment-api';
+import { type PairStatus } from '@/features/pair/pair-api';
+import { PomDisplay, usePomProgress } from '@/features/pom/pom-api';
 import { PremiumPaywall } from '@/features/premium/presentation/premium-paywall';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
 import { TranslationKey } from '@/localization/catalogs';

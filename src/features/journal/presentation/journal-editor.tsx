@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -23,6 +22,7 @@ import { fonts, type SemanticColors } from '@/constants/pomelo-theme';
 import type { JournalEntry, JournalEntryInput, JournalLocation, JournalMedia, JournalPhotoDraft } from '@/features/journal/domain/journal';
 import { useJournal } from '@/features/journal/presentation/journal-provider';
 import { LocationPicker } from '@/features/journal/presentation/location-picker';
+import { PrivateJournalImage } from '@/features/journal/presentation/private-journal-image';
 import { useLocale } from '@/localization/locale-provider';
 
 function today() {
@@ -34,22 +34,6 @@ function mediaId() {
   return typeof globalThis.crypto?.randomUUID === 'function'
     ? globalThis.crypto.randomUUID()
     : `media-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function PrivatePhoto({ media, onRemove }: { media: JournalMedia; onRemove(): void }) {
-  const { media: repository } = useJournal();
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let mounted = true;
-    void repository.createMediaUrl(media.path).then((value) => { if (mounted) setUrl(value); }).catch(() => {});
-    return () => { mounted = false; };
-  }, [media.path, repository]);
-  return (
-    <View style={stylesBase.photo}>
-      {url ? <Image cachePolicy="none" contentFit="cover" source={{ uri: url }} style={StyleSheet.absoluteFill} /> : <ActivityIndicator />}
-      <Pressable onPress={onRemove} style={stylesBase.photoRemove}><Ionicons color="#FFFFFF" name="close" size={15} /></Pressable>
-    </View>
-  );
 }
 
 export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry | null; onClose(): void; visible: boolean }) {
@@ -167,7 +151,7 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
             <LocationPicker onChange={setLocation} value={location} />
             <View style={stylesBase.photoHeading}><Text style={dynamic.label}>{copy.photos} ({(entry?.media.length ?? 0) + drafts.length}/10)</Text><Pressable onPress={() => void selectPhotos()}><Ionicons color={colors.actionDeep} name="add-circle" size={25} /></Pressable></View>
             <View style={stylesBase.photos}>
-              {entry?.media.map((media) => <PrivatePhoto key={media.id} media={media} onRemove={() => void removeExisting(media)} />)}
+              {entry?.media.map((media) => <PrivateJournalImage key={media.id} media={media} onRemove={() => void removeExisting(media)} style={stylesBase.photo} />)}
               {drafts.map((draft, index) => (
                 <View key={`${draft.uri}-${index}`} style={stylesBase.photo}>
                   <Image contentFit="cover" source={{ uri: draft.uri }} style={StyleSheet.absoluteFill} />

@@ -171,50 +171,6 @@ export type Database = {
           },
         ]
       }
-      important_dates: {
-        Row: {
-          created_at: string
-          created_by: string
-          date: string
-          id: string
-          kind: string
-          name: string
-          pair_id: string
-          recurrence: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          date: string
-          id?: string
-          kind: string
-          name: string
-          pair_id: string
-          recurrence?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          date?: string
-          id?: string
-          kind?: string
-          name?: string
-          pair_id?: string
-          recurrence?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "important_dates_pair_id_fkey"
-            columns: ["pair_id"]
-            isOneToOne: false
-            referencedRelation: "pairs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       journal_entries: {
         Row: {
           body: string | null
@@ -425,51 +381,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "prompt_concepts"
             referencedColumns: ["concept_key"]
-          },
-        ]
-      }
-      memory_locations: {
-        Row: {
-          added_by: string
-          city: string
-          country_code: string | null
-          created_at: string
-          memory_id: string
-          pair_id: string
-          updated_at: string
-        }
-        Insert: {
-          added_by: string
-          city: string
-          country_code?: string | null
-          created_at?: string
-          memory_id: string
-          pair_id: string
-          updated_at?: string
-        }
-        Update: {
-          added_by?: string
-          city?: string
-          country_code?: string | null
-          created_at?: string
-          memory_id?: string
-          pair_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "memory_locations_memory_id_fkey"
-            columns: ["memory_id"]
-            isOneToOne: true
-            referencedRelation: "memories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "memory_locations_pair_id_fkey"
-            columns: ["pair_id"]
-            isOneToOne: false
-            referencedRelation: "pairs"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -1086,15 +997,6 @@ export type Database = {
         }
         Returns: Json
       }
-      create_important_date: {
-        Args: {
-          date_kind: string
-          date_name: string
-          date_recurrence?: string
-          date_value: string
-        }
-        Returns: Json
-      }
       create_journal_entry: {
         Args: {
           target_body: string
@@ -1119,13 +1021,11 @@ export type Database = {
         Args: { pair_anniversary: string }
         Returns: Json
       }
-      delete_important_date: { Args: { target_date_id: string }; Returns: Json }
       delete_journal_entry: { Args: { target_entry_id: string }; Returns: Json }
       dissolve_pair: { Args: never; Returns: Json }
       get_daily_moment: { Args: never; Returns: Json }
       get_daily_moment_legacy: { Args: never; Returns: Json }
       get_doodle_session: { Args: { target_moment_id: string }; Returns: Json }
-      get_important_date_widget: { Args: never; Returns: Json }
       get_journal_access: { Args: never; Returns: Json }
       get_journal_calendar: {
         Args: { range_end: string; range_start: string }
@@ -1144,7 +1044,6 @@ export type Database = {
       }
       get_journal_thread: { Args: { target_entry_id: string }; Returns: Json }
       get_memory_history: { Args: never; Returns: Json }
-      get_memory_map: { Args: never; Returns: Json }
       get_memory_thread: { Args: { target_memory_id: string }; Returns: Json }
       get_pair_state: { Args: never; Returns: Json }
       get_pom_progress: { Args: never; Returns: Json }
@@ -1152,12 +1051,6 @@ export type Database = {
       important_date_for_year: {
         Args: { target_date: string; target_year: number }
         Returns: string
-      }
-      important_date_payload: {
-        Args: {
-          target_date: Database["public"]["Tables"]["important_dates"]["Row"]
-        }
-        Returns: Json
       }
       important_dates_for_pair: {
         Args: { target_pair_id: string }
@@ -1232,10 +1125,6 @@ export type Database = {
         Args: { target_media_id: string }
         Returns: Json
       }
-      remove_memory_location: {
-        Args: { target_memory_id: string }
-        Returns: Json
-      }
       remove_own_contribution: {
         Args: { target_contribution_id: string }
         Returns: Json
@@ -1261,14 +1150,6 @@ export type Database = {
         Args: {
           message_body: string
           target_client_message_id: string
-          target_memory_id: string
-        }
-        Returns: Json
-      }
-      set_memory_location: {
-        Args: {
-          target_city: string
-          target_country_code?: string
           target_memory_id: string
         }
         Returns: Json
@@ -1302,16 +1183,6 @@ export type Database = {
       thread_message_payload: {
         Args: {
           target_message: Database["public"]["Tables"]["thread_messages"]["Row"]
-        }
-        Returns: Json
-      }
-      update_important_date: {
-        Args: {
-          date_kind: string
-          date_name: string
-          date_recurrence?: string
-          date_value: string
-          target_date_id: string
         }
         Returns: Json
       }

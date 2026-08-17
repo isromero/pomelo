@@ -1,7 +1,7 @@
 import { Redirect } from 'expo-router';
 
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { PomWardrobeScreen } from '@/features/pom/presentation/pom-wardrobe-screen';
+import { PomWardrobeScreen } from '@/features/pom/pom-api';
 import { canBrowsePairApp } from '@/features/pair/application/pair-controller';
 import { usePair } from '@/features/pair/presentation/pair-provider';
 

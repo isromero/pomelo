@@ -877,13 +877,102 @@ create policy "Pair members remove Journal media objects"
 
 alter publication supabase_realtime add table public.journal_entries, public.journal_entry_media;
 
-revoke execute on function public.get_memory_map() from authenticated;
-revoke execute on function public.set_memory_location(uuid, text, text) from authenticated;
-revoke execute on function public.remove_memory_location(uuid) from authenticated;
-revoke execute on function public.create_important_date(text, text, date, text) from authenticated;
-revoke execute on function public.update_important_date(uuid, text, text, date, text) from authenticated;
-revoke execute on function public.delete_important_date(uuid) from authenticated;
-revoke execute on function public.get_important_date_widget() from authenticated;
-revoke select on table public.memory_locations from authenticated;
-revoke select on table public.important_dates from authenticated;
 alter publication supabase_realtime drop table public.memory_locations, public.important_dates;
+
+create or replace function public.memory_payload_for_user(
+  target_memory_id uuid,
+  target_user_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $$
+declare
+  selected_memory public.memories%rowtype;
+  own_contribution public.contributions%rowtype;
+  partner_contribution public.contributions%rowtype;
+  partner_profile public.profiles%rowtype;
+  target_locale text;
+  visual_enabled boolean := false;
+begin
+  select * into selected_memory from public.memories where id = target_memory_id;
+  if selected_memory.id is null then return jsonb_build_object('error', 'memory_not_found'); end if;
+  if not exists (
+    select 1 from public.pair_memberships
+    where pair_id = selected_memory.pair_id and user_id = target_user_id
+  ) then return jsonb_build_object('error', 'not_allowed'); end if;
+  select locale into target_locale from public.profiles where id = target_user_id;
+  if selected_memory.format != 'doodle' then
+    select * into own_contribution from public.contributions
+    where moment_id = selected_memory.moment_id and user_id = target_user_id;
+    select * into partner_contribution from public.contributions
+    where moment_id = selected_memory.moment_id and user_id != target_user_id
+    order by submitted_at limit 1;
+  end if;
+  select profile.* into partner_profile
+  from public.pair_memberships membership
+  join public.profiles profile on profile.id = membership.user_id
+  where membership.pair_id = selected_memory.pair_id and membership.user_id != target_user_id
+  order by membership.joined_at limit 1;
+  select coalesce((
+    select preference.visual_enabled from public.memory_widget_preferences preference
+    where preference.memory_id = selected_memory.id and preference.user_id = target_user_id
+  ), false) into visual_enabled;
+  return jsonb_build_object(
+    'id', selected_memory.id,
+    'momentId', selected_memory.moment_id,
+    'pairId', selected_memory.pair_id,
+    'localDate', selected_memory.local_date,
+    'format', selected_memory.format,
+    'revealedAt', selected_memory.revealed_at,
+    'pomState', selected_memory.pom_state,
+    'prompt', jsonb_build_object(
+      'conceptKey', selected_memory.prompt_concept_key,
+      'text', case when target_locale = 'en' then selected_memory.prompt_en else selected_memory.prompt_es end,
+      'responseType', selected_memory.response_type,
+      'options', selected_memory.response_options
+    ),
+    'ownContribution', case when selected_memory.format = 'doodle' then null
+      else public.contribution_payload(own_contribution) end,
+    'partner', case when partner_profile.id is null then null else jsonb_build_object(
+      'userId', partner_profile.id,
+      'displayName', partner_profile.display_name,
+      'avatarKey', coalesce(partner_profile.avatar_key, 'calm'),
+      'submitted', true,
+      'contribution', case when selected_memory.format = 'doodle' then null
+        else public.contribution_payload(partner_contribution) end
+    ) end,
+    'photoComposition', nullif(selected_memory.photo_composition, '{}'::jsonb),
+    'doodleDocument', selected_memory.doodle_document,
+    'widgetVisualEnabled', visual_enabled
+  );
+end;
+$$;
+
+create or replace function public.important_dates_for_pair(target_pair_id uuid)
+returns jsonb
+language sql
+security definer
+stable
+set search_path = ''
+as $$ select '[]'::jsonb; $$;
+
+create or replace function public.next_important_date_for_pair(target_pair_id uuid)
+returns jsonb
+language sql
+security definer
+stable
+set search_path = ''
+as $$ select null::jsonb; $$;
+
+drop function public.get_memory_map();
+drop function public.set_memory_location(uuid, text, text);
+drop function public.remove_memory_location(uuid);
+drop function public.create_important_date(text, text, date, text);
+drop function public.update_important_date(uuid, text, text, date, text);
+drop function public.delete_important_date(uuid);
+drop function public.get_important_date_widget();
+drop table public.memory_locations cascade;
+drop table public.important_dates cascade;

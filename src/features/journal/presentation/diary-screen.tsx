@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,10 +9,11 @@ import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, type SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import type { JournalEntry, JournalHistoryItem, JournalMedia, JournalProjection, UpcomingOccurrence } from '@/features/journal/domain/journal';
+import type { JournalEntry, JournalHistoryItem, JournalProjection, UpcomingOccurrence } from '@/features/journal/domain/journal';
 import { JournalEditor } from '@/features/journal/presentation/journal-editor';
 import { JournalMap } from '@/features/journal/presentation/journal-map';
 import { useJournal } from '@/features/journal/presentation/journal-provider';
+import { PrivateJournalImage } from '@/features/journal/presentation/private-journal-image';
 import { ThreadPanel, useMoment } from '@/features/moment/moment-api';
 import { useLocale } from '@/localization/locale-provider';
 
@@ -25,16 +25,6 @@ function formatDate(value: string, locale: 'es' | 'en', monthOnly = false) {
     ? { month: 'long', year: 'numeric' }
     : { day: 'numeric', month: 'short', year: 'numeric' })
     .format(new Date(year, month - 1, day || 1, 12));
-}
-
-function PrivateImage({ media, repository }: { media: JournalMedia; repository: ReturnType<typeof useJournal>['media'] }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    void repository.createMediaUrl(media.path).then((value) => { if (active) setUrl(value); }).catch(() => {});
-    return () => { active = false; };
-  }, [media.path, repository]);
-  return url ? <Image cachePolicy="none" contentFit="cover" source={{ uri: url }} style={stylesBase.detailImage} /> : <View style={stylesBase.detailImage}><ActivityIndicator /></View>;
 }
 
 export function DiaryScreen() {
@@ -113,7 +103,7 @@ export function DiaryScreen() {
               <Text style={styles.detailTitle}>{selected.title}</Text>
               {selected.body ? <Text style={styles.detailBody}>{selected.body}</Text> : null}
               {selected.location ? <View style={styles.place}><Ionicons color={colors.actionDeep} name="location" size={18} /><Text style={styles.placeText}>{selected.location.label}</Text></View> : null}
-              {selected.media.length ? <ScrollView horizontal contentContainerStyle={styles.detailPhotos}>{selected.media.map((media) => <PrivateImage key={media.id} media={media} repository={journal.media} />)}</ScrollView> : null}
+              {selected.media.length ? <ScrollView horizontal contentContainerStyle={styles.detailPhotos}>{selected.media.map((media) => <PrivateJournalImage key={media.id} media={media} style={stylesBase.detailImage} />)}</ScrollView> : null}
               <Text style={styles.author}>{copy.by} {selected.createdBy === user?.id ? copy.you : copy.partner}</Text>
               {user ? <ThreadPanel controller={journal.threadController} ownUserId={user.id} targetId={selected.id} /> : null}
             </ScrollView>
