@@ -116,12 +116,12 @@ El primer Moment completo es gratuito y no requiere tarjeta. Tras su Reveal se p
 74. Como Pair, quiero que el documento final sea estable aunque la sesión en tiempo real termine, para conservar el Doodle en History.
 75. Como Pair, quiero continuar un Doodle revelado en su Thread, para comentar el resultado.
 
-### Memory, History y Thread
+### Memory, Diary y Thread
 
 76. Como Pair, quiero que cada Reveal se guarde automáticamente como Memory, para construir History sin trabajo manual.
-77. Como User, quiero recorrer History en orden cronológico, para recordar cómo ha crecido nuestra relación.
+77. Como User, quiero recorrer la vista Historia de nuestro Diario en orden cronológico, para recordar cómo ha crecido nuestra relación.
 78. Como User, quiero distinguir de un vistazo Question, Photo y Doodle Memories, para navegar por distintos tipos de contenido.
-79. Como User, quiero abrir una Memory y ver Prompt, Contributions disponibles, fecha, Pom y ciudad aproximada si existe, para recuperar todo su contexto.
+79. Como User, quiero abrir una Memory y ver Prompt, Contributions disponibles, fecha y Pom, para recuperar todo su contexto.
 80. Como User, quiero añadir mensajes de texto al Thread de una Memory revelada, para prolongar una conversación concreta.
 81. Como User, quiero recibir una notificación cuando mi pareja responda en un Thread, para no perder el seguimiento.
 82. Como User, quiero que un Thread no se convierta en un chat general ni admita media en el MVP, para mantener el producto enfocado.
@@ -129,13 +129,13 @@ El primer Moment completo es gratuito y no requiere tarjeta. Tras su Reveal se p
 84. Como pareja de quien elimina una Contribution, quiero ver un estado estable de contenido eliminado, para que History no se rompa ni parezca un error.
 85. Como User en Archive Mode, quiero seguir leyendo las Memories que tengo permitidas, para que cerrar el paywall o desvincularse no borre el pasado.
 
-### Location y Map
+### Journal Entries, Calendar y Map
 
-86. Como User, quiero decidir si añado una ciudad aproximada a una Memory, para contextualizarla sin revelar coordenadas precisas.
-87. Como User, quiero retirar la ubicación antes o después de guardar, para cambiar de opinión sobre ese dato.
-88. Como User, quiero ver en Map solo las Memories que contienen una ciudad, para explorar nuestra historia geográficamente.
-89. Como User, quiero abrir una Memory desde Map, para pasar del lugar al recuerdo completo.
-90. Como User, quiero que Map sea de consulta en el MVP, para que añadir puntos no se convierta en otra tarea manual.
+86. Como User, quiero crear una entrada manual con título, texto, fotos y cualquier fecha, para conservar experiencias pasadas o planes futuros fuera del ritual diario.
+87. Como User, quiero confirmar opcionalmente un pin desde un mapa centrado en mi posición, para situar la entrada sin seguimiento automático.
+88. Como User, quiero recorrer Diario como Historia, Calendario o Mapa, para explorar el mismo contenido por tiempo o lugar.
+89. Como User, quiero distinguir en Map lo vivido de lo que está por vivir y abrir su entrada, para comprender nuestra historia geográfica.
+90. Como Pair, queremos editar conjuntamente una entrada y continuarla en su Thread, sin convertir Pomelo en un chat general.
 
 ### Pom y Progress
 
@@ -160,13 +160,13 @@ El primer Moment completo es gratuito y no requiere tarjeta. Tras su Reveal se p
 106. Como Pair, quiero disponer de una recuperación limitada del Streak, para absorber fallos ocasionales sin eliminar el compromiso.
 107. Como Pair, quiero conservar nuestro récord y Memories aunque se rompa el Streak activo, para que el progreso pasado siga teniendo valor.
 
-### Important Dates y Pair space
+### Fechas base y próximos planes
 
 108. Como User, quiero ver el cumpleaños de mi pareja y el aniversario compartido, para recordar las fechas básicas de la relación.
-109. Como Pair, quiero añadir un viaje u otra Important Date personalizada, para anticipar eventos que nos importan.
-110. Como User, quiero editar o eliminar una Important Date con permisos comprensibles, para corregir cambios de planes.
-111. Como User, quiero ver una cuenta atrás de la siguiente Important Date en el Pair space, para tenerla presente.
-112. Como User, quiero poder mostrar una cuenta atrás de Important Date en una superficie de widget cuando esté disponible, para recordarla fuera de la app.
+109. Como Pair, quiero añadir viajes y planes futuros como entradas del Diario, para anticiparlos sin gestionar otro tipo de contenido.
+110. Como User, quiero que una entrada admita fin opcional y repetición anual, para representar viajes y costumbres sin duplicados.
+111. Como User, quiero ver próximos planes, cumpleaños y aniversario juntos, para saber qué viene después.
+112. Como User, quiero que el widget elija automáticamente la próxima fecha elegible, para recordarla fuera de la app.
 
 ### Widget Family
 
@@ -240,9 +240,9 @@ El primer Moment completo es gratuito y no requiere tarjeta. Tras su Reveal se p
 - Supabase proporcionará Auth, Postgres, Row Level Security, Storage, Realtime y Edge Functions. Las reglas de servidor y RLS son la autoridad de privacidad y lifecycle.
 - La UI consumirá servicios o repositorios de feature en lugar de llamar directamente a Supabase. Esos límites permitirán sustituir el backend por dobles deterministas en pruebas y paralelizar UI y datos.
 - RevenueCat será la autoridad de estado de compra de tienda. Webhooks idempotentes proyectarán Premium desde el Subscriber hacia su Pair activa.
-- El modelo persistente inicial cubrirá Profile, Pair y membresía, Invitation, Prompt, Moment, Contribution, Reveal/Memory, Thread message, Important Date, Pom Progress, Streak, Premium projection, preferencias de notificación y widgets. Media y documentos derivados se referenciarán desde registros autorizados, no mediante URLs públicas permanentes.
+- El modelo persistente inicial cubrirá Profile, Pair y membresía, Invitation, Prompt, Moment, Contribution, Reveal/Memory, Journal Entry, Thread message, Pom Progress, Streak, Premium projection, preferencias de notificación y widgets. Media y documentos derivados se referenciarán desde registros autorizados, no mediante URLs públicas permanentes.
 - Las operaciones autoritativas incluirán crear/aceptar/cancelar Invitation, generar el Moment diario, enviar Contribution, finalizar Doodle, ejecutar Reveal con creación exactly-once de Memory, actualizar Progress/Streak, proyectar Premium y aplicar eliminación o unlinking. Las transiciones críticas se ejecutarán en servidor o transacción, no como una secuencia confiada al cliente.
-- User, Profile, Pair, Invitation, Moment, Prompt, Contribution, Reveal, Memory, History, Map, Thread, Pom, Streak, Progress, Important Date, Premium, Subscriber, Archive Mode y Widget Family seguirán las definiciones de `CONTEXT.md`.
+- User, Profile, Pair, Invitation, Moment, Prompt, Contribution, Reveal, Memory, Journal Entry, Diary, History, Calendar, Map, Thread, Pom, Streak, Progress, Important Date, Premium, Subscriber, Archive Mode y Widget Family seguirán las definiciones de `CONTEXT.md`.
 - Una Pair tendrá exactamente dos miembros para activar el producto y un User no podrá pertenecer a más de una Pair activa.
 - Invitation admitirá enlace de aplicación y código alternativo de un solo uso, con estados pending, accepted, cancelled y expired.
 - El onboarding del segundo miembro repetirá los datos personales, pero reutilizará datos compartidos ya definidos, como el aniversario.
@@ -273,9 +273,9 @@ El primer Moment completo es gratuito y no requiere tarjeta. Tras su Reveal se p
 - Los trazos de Doodle se transmitirán por lotes mediante un canal de sesión y se persistirá un documento final; no se insertará cada evento de puntero directamente en Postgres.
 - Ambos miembros deberán finalizar Doodle antes de que el Moment quede ready. La Memory solo se creará después de Reveal, igual que en otros formatos.
 - Los resultados revelados adoptarán un lenguaje visual de conversación. En Question, la Contribution propia se alineará a la derecha y la de la pareja a la izquierda.
-- Thread solo existirá dentro de una Memory revelada y admitirá texto en el MVP. No habrá chat general, media, llamadas, presencia, recibos de lectura ni indicadores complejos.
-- History será cronológica y read-only-first. Map solo representará Memories con ciudad aproximada y abrirá su detalle.
-- Las ubicaciones serán opcionales, removibles y aproximadas. El widget de distancia usará ciudades configuradas manualmente, no background GPS.
+- Thread solo existirá dentro de una Memory revelada o Journal Entry y admitirá texto en el MVP. No habrá chat general, media, llamadas, presencia, recibos de lectura ni indicadores complejos.
+- Diary reunirá History, Calendar y Map. Map solo representará Journal Entries con un pin confirmado y abrirá su detalle.
+- Las ubicaciones de Journal Entry serán opcionales, removibles, exactas dentro de la Pair y siempre seleccionadas en primer plano. El widget de distancia seguirá usando ciudades de Profile, no background GPS.
 - Media se almacenará de forma privada, se servirá con acceso temporal autorizado y no tendrá URLs públicas permanentes.
 - Si un User elimina su Contribution, las referencias compartidas mantendrán una estructura estable con un estado de contenido eliminado.
 - Pom usará la referencia `Pom / Original`, una sola etapa física, unas seis expresiones, tres reacciones reutilizables y unos cuatro accesorios desbloqueables.
@@ -286,18 +286,18 @@ El primer Moment completo es gratuito y no requiere tarjeta. Tras su Reveal se p
 - Streak será Pair-scoped y avanzará solo con Moments completados por ambos. Existirá recuperación limitada sin borrar el récord histórico.
 - El horario del Moment será Pair-scoped y la entrega respetará las zonas horarias de ambos miembros con reglas explícitas para cambios de zona.
 - Las notificaciones se programarán para disponibilidad, participación de la pareja, estado ready, próximo vencimiento y actividad en Threads. Todas usarán deep links y preferencias por User.
-- Important Date cubrirá cumpleaños, aniversario, viaje y fecha personalizada. Alimentará el Pair space y una superficie de cuenta atrás sin crear Memory, Streak o Progress.
+- Important Date cubrirá únicamente cumpleaños y aniversario calculados. Viajes y fechas personalizadas serán Journal Entries y tampoco crearán Memory, Streak o Progress.
 - Widget Family tendrá como scope requerido estado, última Memory visual, distancia aproximada e Important Date.
 - Los widgets visuales requerirán opt-in, nunca mostrarán contenido antes de Reveal y ofrecerán una forma inmediata de ocultarlo.
 - iOS usará la capacidad nativa de widgets disponible en Expo. Android se tratará como una superficie nativa específica y se investigará al inicio por su riesgo de calendario.
 - El primer Moment completo, su Reveal, Pom y la primera Memory serán gratuitos y no pedirán tarjeta.
-- Después de la primera Memory, Map y Widget Family se explicarán mediante previews simuladas dentro de la app; el acceso funcional seguirá requiriendo Premium.
+- Cada Pair podrá crear una Journal Entry gratuita y ver su pin real. Premium será necesario para crear entradas adicionales y para Widget Family; expirar Premium no ocultará ni bloqueará la edición de entradas existentes.
 - El paywall aparecerá después de que el resultado de Reveal sea visible. Cerrar el paywall dejará la Pair en Archive Mode y bloqueará la generación del siguiente Moment.
 - Los precios iniciales serán EUR 29.99 anual y EUR 7.99 mensual, sin trial, plan semanal ni counter-offer. El anual será recomendado; cualquier equivalente semanal será texto secundario y no ocultará el cobro real.
 - El paywall comunicará `Una suscripción para los dos`, renovación y cancelación, ofrecerá términos, privacidad y restore, y usará `Desbloquear Pomelo para los dos` como CTA principal. Cancelar la renovación conservará Premium hasta finalizar el periodo pagado.
 - Premium será propiedad del Subscriber, habilitará a ambos miembros de la Pair activa y seguirá al Subscriber si la Pair se disuelve.
 - Restauración, grace period, caducidad, prevención de compra duplicada y proyección al segundo miembro formarán parte del contrato de monetización, no de parches de UI.
-- Los permisos se solicitarán en contexto. Cámara y fotos se pedirán al crear Photo; notificaciones al activar recordatorios; ubicación solo al añadirla a una Memory.
+- Los permisos se solicitarán en contexto. Cámara y fotos se pedirán al crear Photo o adjuntar media; notificaciones al activar recordatorios; ubicación foreground solo al abrir el selector de una Journal Entry.
 - Los Prompts se gestionarán inicialmente como contenido versionado o datos operables con concepto estable, variantes ES/EN, formato, intimidad y estado activo. No se construirá un CMS completo.
 - La analítica usará identificadores y eventos de estado, con métricas primarias a nivel Pair. Nunca enviará texto, media, trazos ni mensajes privados.
 - Los formatos de evento y lifecycle deberán tolerar reintentos y aplicar claves de idempotencia en Contribution, Reveal, Memory, compras y webhooks.
@@ -331,7 +331,7 @@ El primer Moment completo es gratuito y no requiere tarjeta. Tras su Reveal se p
 - Video Moments, audio Moments, sliders, encuestas complejas, predicciones, preguntas multipartes y formatos distintos de Question, Photo y Doodle.
 - Captura Photo simultánea obligatoria, ventana cronometrada estilo BeReal, vídeo o composición editable avanzada.
 - Capas, stickers, formas, texto, pinceles avanzados o exportación profesional en Doodle.
-- Creación manual de Memories antiguas, álbumes importados, edición compleja de History o Map y tarjetas sociales avanzadas.
+- Álbumes importados, vídeo en Journal Entries, edición masiva del Diario y tarjetas sociales avanzadas.
 - Ubicación en vivo, background GPS, distancia en tiempo real o afirmaciones de seguimiento preciso.
 - Hambre, salud, tristeza, muerte, culpa, monedas, tienda, habitación, minijuegos, múltiples mascotas o evolución física completa de Pom.
 - Micropagos cosméticos en el MVP. Requerirán una decisión de producto y monetización posterior.

@@ -36,3 +36,9 @@ Convertir la History mínima en el archivo conjunto real de la Pair. Debe combin
 - [09 - Doodle Moment colaborativo en tiempo real](09-doodle-colaborativo.md)
 
 ## Comments
+
+### 2026-08-17 - Sustituido por Diary unificado
+
+- ADR-0010 sustituye la ubicación por ciudad en Memories: las Memories del ritual quedan fuera de Map.
+- History pasa a ser una vista de Diary y Map se alimenta solo de Journal Entries manuales con pin confirmado.
+- La implementación de ciudad aproximada se reemplaza en el siguiente slice; no debe ampliarse.

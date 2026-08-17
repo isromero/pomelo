@@ -37,3 +37,4 @@ Crear un Pair space ligero que reúna cumpleaños, aniversario, viajes y fechas 
 - 2026-08-16 - La validación de nombre y fecha ahora muestra el motivo concreto; `2000-12-12` se rechaza como fecha pasada. Correcciones en `7eea6f4` y `1c2a517`.
 - 2026-08-16 - El contrato de datos para widgets está cubierto en este issue; el renderizado nativo de widgets queda para los issues 14 y 15.
 - 2026-08-16 - Verificado con 17 suites y 83 tests Jest, `npm run typecheck`, `npm run lint` y la suite SQL de lifecycle/dates (141 aserciones).
+- 2026-08-17 - ADR-0010 sustituye viajes y fechas custom por Journal Entries. Cumpleaños y aniversario permanecen como hitos calculados y el contrato de próxima fecha se mueve a Diary.

@@ -470,7 +470,6 @@ function ActivePair({ error, state }: { error: PairErrorCode | null; state: Pair
         <Text style={styles.codeLabel}>{t('pair.active.anniversary')}</Text>
         <Text style={styles.anniversary}>{formatDate(state.anniversary, locale)}</Text>
       </View>
-      <ImportantDatesPanel state={state} />
       <PrimaryButton
         icon="sparkles-outline"
         label={t('pair.active.openHome')}
@@ -482,7 +481,7 @@ function ActivePair({ error, state }: { error: PairErrorCode | null; state: Pair
   );
 }
 
-function ImportantDatesPanel({ state }: { state: PairState }) {
+export function ImportantDatesPanel({ state }: { state: PairState }) {
   const { colors } = useAppearance();
   const { busy, controller, error } = usePair();
   const { locale, t } = useLocale();

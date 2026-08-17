@@ -8,7 +8,7 @@ import { fonts, SemanticColors } from '@/constants/pomelo-theme';
 import { TranslationKey } from '@/localization/catalogs';
 import { useLocale } from '@/localization/locale-provider';
 
-export type TabKey = 'home' | 'history' | 'map' | 'couple';
+export type TabKey = 'home' | 'diary' | 'couple';
 
 type BottomNavigationProps = {
   activeTab?: TabKey;
@@ -16,9 +16,8 @@ type BottomNavigationProps = {
 
 const tabRoutes = {
   couple: '/pair',
-  history: '/history',
+  diary: '/diary',
   home: '/home',
-  map: '/map',
 } as const;
 
 const tabs: {
@@ -28,8 +27,7 @@ const tabs: {
   activeIcon: keyof typeof Ionicons.glyphMap;
 }[] = [
   { key: 'home', label: 'nav.home', icon: 'home-outline', activeIcon: 'home-outline' },
-  { key: 'history', label: 'nav.history', icon: 'journal-outline', activeIcon: 'journal' },
-  { key: 'map', label: 'nav.map', icon: 'map-outline', activeIcon: 'map' },
+  { key: 'diary', label: 'nav.diary', icon: 'journal-outline', activeIcon: 'journal' },
   { key: 'couple', label: 'nav.pair', icon: 'heart-outline', activeIcon: 'heart' },
 ];
 

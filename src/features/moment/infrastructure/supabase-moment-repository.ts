@@ -12,8 +12,6 @@ import type {
   DailyMoment,
   DoodleDocument,
   Memory,
-  MemoryLocation,
-  MemoryMapEntry,
   MomentFormat,
   MomentPrompt,
   MomentPartner,
@@ -213,23 +211,6 @@ function parseContribution(value: unknown): Contribution | null {
   };
 }
 
-function parseMemoryLocation(value: unknown): MemoryLocation | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (!isObject(value)) {
-    throw new MomentError('unexpected');
-  }
-  const addedBy = stringValue(value.addedBy);
-  const city = stringValue(value.city);
-  const countryCode = nullableString(value.countryCode);
-  const updatedAt = stringValue(value.updatedAt);
-  if (!addedBy || !city || updatedAt === null) {
-    throw new MomentError('unexpected');
-  }
-  return { addedBy, city, countryCode, updatedAt };
-}
-
 function parsePartner(value: unknown): MomentPartner {
   if (!isObject(value)) {
     throw new MomentError('unexpected');
@@ -388,7 +369,7 @@ function parseMemory(value: unknown): Memory {
     id,
     localDate,
     momentId,
-    location: parseMemoryLocation(value.location),
+    location: null,
     ownContribution,
     pairId,
     partner: parsePartner(value.partner),
@@ -420,18 +401,6 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
       throw new MomentError('unexpected');
     }
     return data.map(parseMemory);
-  }
-
-  async getMemoryMap(): Promise<MemoryMapEntry[]> {
-    const { data, error } = await this.client.rpc('get_memory_map');
-    const failure = repositoryError(error);
-    if (failure) {
-      throw failure;
-    }
-    if (!Array.isArray(data)) {
-      throw new MomentError('unexpected');
-    }
-    return data.map(parseMemoryMapEntry);
   }
 
   async submitQuestion(momentId: string, response: QuestionResponse) {
@@ -556,22 +525,6 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
     return data === true;
   }
 
-  async setMemoryLocation(memoryId: string, city: string, countryCode?: string) {
-    const { data, error } = await this.client.rpc('set_memory_location', {
-      target_city: city,
-      target_country_code: countryCode,
-      target_memory_id: memoryId,
-    });
-    return this.memoryResult(data, error);
-  }
-
-  async removeMemoryLocation(memoryId: string) {
-    const { data, error } = await this.client.rpc('remove_memory_location', {
-      target_memory_id: memoryId,
-    });
-    return this.memoryResult(data, error);
-  }
-
   async removeOwnContribution(contributionId: string) {
     const { data, error } = await this.client.rpc('remove_own_contribution', {
       target_contribution_id: contributionId,
@@ -605,11 +558,6 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pair_streaks' },
-        listener,
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'memory_locations' },
         listener,
       )
       .on('broadcast', { event: 'moment-updated' }, listener)
@@ -664,20 +612,6 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
   }
 }
 
-function parseMemoryMapEntry(value: unknown): MemoryMapEntry {
-  if (!isObject(value)) {
-    throw new MomentError('unexpected');
-  }
-  const city = stringValue(value.city);
-  const countryCode = nullableString(value.countryCode);
-  const localDate = stringValue(value.localDate);
-  const memoryId = stringValue(value.memoryId);
-  const revealedAt = stringValue(value.revealedAt);
-  if (!city || !localDate || !memoryId || !revealedAt) {
-    throw new MomentError('unexpected');
-  }
-  return { city, countryCode, localDate, memoryId, revealedAt };
-}
 
 function threadApplicationError(value: unknown) {
   if (!isObject(value) || typeof value.error !== 'string') {

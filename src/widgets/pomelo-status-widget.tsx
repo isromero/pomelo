@@ -14,6 +14,7 @@ export type PomeloStatusWidgetProps = {
   accessoryLabel?: string;
   action: string;
   title: string;
+  url?: string;
 };
 
 function PomeloStatusWidget(
@@ -27,7 +28,7 @@ function PomeloStatusWidget(
       alignment="leading"
       modifiers={[
         padding({ all: 16 }),
-        widgetURL('pomelo://widget'),
+        widgetURL(props.url ?? 'pomelo://widget'),
         containerBackground(colors.background, 'widget'),
       ]}
       spacing={8}>

@@ -2,7 +2,8 @@ import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { useAccount } from '@/features/account/presentation/account-provider';
-import { useMoment } from '@/features/moment/moment-api';
+import { useJournal } from '@/features/journal/journal-api';
+import { nextWidgetOccurrence } from '@/features/journal/domain/journal';
 import { usePomProgress } from '@/features/pom/presentation/progress-provider';
 import type { AccessoryId } from '@/features/pom/domain/progress';
 import { usePremium } from '@/features/premium/presentation/premium-provider';
@@ -20,7 +21,7 @@ const accessoryLabels: Record<AccessoryId, TranslationKey> = {
 
 export function WidgetEntryScreen() {
   const { status } = useAccount();
-  const { history } = useMoment();
+  const { entries, projection } = useJournal();
   const { progress } = usePomProgress();
   const premium = usePremium();
   const { t } = useLocale();
@@ -28,20 +29,24 @@ export function WidgetEntryScreen() {
 
   useEffect(() => {
     try {
-      const locked = history.length > 0 && premium.access !== 'premium';
+      const locked = premium.access !== 'premium';
+      const next = nextWidgetOccurrence(entries, projection.upcoming);
       PomeloStatusWidget.updateSnapshot({
         accessoryLabel: progress?.equippedAccessory
           ? t(accessoryLabels[progress.equippedAccessory])
           : undefined,
-        action: t(locked ? 'premium.unlock' : 'widget.action'),
-        title: t(locked ? 'premium.widget.title' : 'widget.title'),
+        action: locked ? t('premium.unlock') : next?.startDate ?? t('widget.action'),
+        title: locked ? t('premium.widget.title') : next?.name ?? t('widget.title'),
+        url: next?.kind === 'entry'
+          ? `pomelo://diary?entryId=${encodeURIComponent(next.id)}`
+          : 'pomelo://diary?view=calendar',
       });
     } catch {
       captureDiagnostic({ area: 'widget', code: 'snapshot-failed', recoverable: true });
     } finally {
       setSnapshotUpdated(true);
     }
-  }, [history.length, premium.access, progress?.equippedAccessory, t]);
+  }, [entries, premium.access, progress?.equippedAccessory, projection.upcoming, t]);
 
   if (!snapshotUpdated || status === 'booting') {
     return null;

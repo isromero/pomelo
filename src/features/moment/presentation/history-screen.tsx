@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline } from 'react-native-svg';
 
@@ -177,7 +177,6 @@ function MemoryCard({
   memory,
   ownUserId,
   onToggleThread,
-  canAddLocation,
   threadController,
   threadOpen,
 }: {
@@ -185,15 +184,12 @@ function MemoryCard({
   memory: Memory;
   ownUserId: string;
   onToggleThread(): void;
-  canAddLocation: boolean;
   threadController: ReturnType<typeof useThreadController>;
   threadOpen: boolean;
 }) {
   const { colors } = useAppearance();
   const { locale, t } = useLocale();
   const styles = createStyles(colors);
-  const [editingLocation, setEditingLocation] = useState(false);
-  const [locationDraft, setLocationDraft] = useState(memory.location?.city ?? '');
   const ownContribution = memory.ownContribution;
   const ownContributionAvailable = ownContribution?.available !== false;
   const partnerContribution = memory.partner.contribution;
@@ -202,17 +198,6 @@ function MemoryCard({
       ? contributionText(ownContribution)
       : t('history.deletedContribution')
     : t('history.missingContribution');
-
-  const removeLocation = () => {
-    Alert.alert(t('history.removeLocationTitle'), t('history.removeLocationBody'), [
-      { style: 'cancel', text: t('common.cancel') },
-      {
-        onPress: () => void controller.removeMemoryLocation(memory.id),
-        style: 'destructive',
-        text: t('history.removeConfirm'),
-      },
-    ]);
-  };
 
   const removeContribution = () => {
     if (!ownContribution) {
@@ -226,16 +211,6 @@ function MemoryCard({
         text: t('history.removeConfirm'),
       },
     ]);
-  };
-
-  const saveLocation = () => {
-    void controller
-      .setMemoryLocation(memory.id, locationDraft)
-      .then((saved) => {
-        if (saved) {
-          setEditingLocation(false);
-        }
-      });
   };
 
   const partnerContributionText = partnerContribution
@@ -289,53 +264,6 @@ function MemoryCard({
       ) : ownContribution ? (
         <Text style={styles.deletedText}>{t('history.contributionRemoved')}</Text>
       ) : null}
-      {memory.location || canAddLocation ? (
-        <View style={styles.locationSection}>
-          {memory.location && !editingLocation ? (
-            <View style={styles.locationHeader}>
-              <View style={styles.locationValue}>
-                <Ionicons color={colors.actionDeep} name="location-outline" size={16} />
-                <Text style={styles.locationText}>{memory.location.city}</Text>
-              </View>
-              <Pressable accessibilityRole="button" onPress={removeLocation} style={styles.locationButton}>
-                <Text style={styles.locationButtonText}>{t('history.removeLocation')}</Text>
-              </Pressable>
-            </View>
-          ) : editingLocation ? (
-            <View style={styles.locationEditor}>
-              <TextInput
-                autoCapitalize="words"
-                maxLength={120}
-                onChangeText={setLocationDraft}
-                placeholder={t('history.locationPlaceholder')}
-                placeholderTextColor={colors.muted}
-                style={styles.locationInput}
-                value={locationDraft}
-              />
-              <View style={styles.locationActions}>
-                <Pressable accessibilityRole="button" onPress={() => setEditingLocation(false)} style={styles.locationButton}>
-                  <Text style={styles.locationButtonText}>{t('common.cancel')}</Text>
-                </Pressable>
-                <Pressable accessibilityRole="button" onPress={saveLocation} style={styles.locationAction}>
-                  <Text style={styles.locationActionText}>{t('history.saveLocation')}</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.locationPrivacy}>{t('history.locationPrivacy')}</Text>
-            </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setLocationDraft(memory.location?.city ?? '');
-                setEditingLocation(true);
-              }}
-              style={styles.locationAdd}>
-              <Ionicons color={colors.actionDeep} name="add-circle-outline" size={17} />
-              <Text style={styles.locationButtonText}>{t('history.addLocation')}</Text>
-            </Pressable>
-          )}
-        </View>
-      ) : null}
       {memory.format === 'photo' ? (
         <Pressable
           accessibilityRole="switch"
@@ -360,7 +288,7 @@ function MemoryCard({
   );
 }
 
-export function HistoryScreen({ pairStatus = 'active' }: { pairStatus?: 'active' | 'archived' } = {}) {
+export function HistoryScreen() {
   const { colors } = useAppearance();
   const { profile } = useAccount();
   const { error, history, moment, status, controller } = useMoment();
@@ -429,7 +357,6 @@ export function HistoryScreen({ pairStatus = 'active' }: { pairStatus?: 'active'
           ) : (
             visibleHistory.map((memory) => (
               <MemoryCard
-                canAddLocation={pairStatus === 'active'}
                 controller={controller}
                 key={memory.id}
                 memory={memory}
@@ -443,7 +370,7 @@ export function HistoryScreen({ pairStatus = 'active' }: { pairStatus?: 'active'
             ))
           )}
         </ScrollView>
-        <BottomNavigation activeTab="history" />
+        <BottomNavigation activeTab="diary" />
       </View>
     </SafeAreaView>
   );

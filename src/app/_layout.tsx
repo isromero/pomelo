@@ -22,6 +22,7 @@ import {
   useAccountClient,
 } from '@/features/account/presentation/account-provider';
 import { MomentProvider } from '@/features/moment/moment-api';
+import { JournalProvider } from '@/features/journal/journal-api';
 import { PomProgressProvider } from '@/features/pom/presentation/progress-provider';
 import { PairProvider, usePair } from '@/features/pair/presentation/pair-provider';
 import { PremiumProvider } from '@/features/premium/presentation/premium-provider';
@@ -59,7 +60,9 @@ export default function RootLayout() {
               <PairRuntime>
                 <PomProgressRuntime>
                   <MomentRuntime>
-                    <RootNavigator />
+                    <JournalRuntime>
+                      <RootNavigator />
+                    </JournalRuntime>
                   </MomentRuntime>
                 </PomProgressRuntime>
               </PairRuntime>
@@ -69,6 +72,15 @@ export default function RootLayout() {
       </AppearanceProvider>
     </LocaleProvider>
   );
+}
+
+function JournalRuntime({ children }: PropsWithChildren) {
+  const client = useAccountClient();
+  const { status } = useAccount();
+  const pair = usePair();
+  const active = status === 'ready' && pair.status === 'ready'
+    && (pair.state?.status === 'active' || pair.state?.status === 'archived');
+  return <JournalProvider active={active} client={client}>{children}</JournalProvider>;
 }
 
 function LocaleRuntime({ children }: PropsWithChildren) {

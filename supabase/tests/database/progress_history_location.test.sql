@@ -1,9 +1,8 @@
 begin;
 
-select plan(31);
+select plan(24);
 
 select has_table('public', 'pair_progress', 'Pair-scoped Pom Progress exists');
-select has_table('public', 'memory_locations', 'Memory locations exist');
 select has_column('public', 'contributions', 'removed_at', 'Contributions record privacy removal');
 
 insert into auth.users (
@@ -203,45 +202,6 @@ select is(
   'a later accessory remains locked until its milestone'
 );
 
-insert into progress_history_results values (
-  'located',
-  public.set_memory_location(
-    (select id from public.memories where moment_id = (select payload ->> 'id' from progress_history_results where label = 'first')::uuid),
-    'Barcelona',
-    'ES'
-  )
-);
-select is(
-  (select payload #>> '{location,city}' from progress_history_results where label = 'located'),
-  'Barcelona',
-  'a Memory stores an optional approximate city'
-);
-insert into progress_history_results values ('map-one', public.get_memory_map());
-select is(
-  jsonb_array_length((select payload from progress_history_results where label = 'map-one')),
-  1,
-  'Map contains only Memories with a current location'
-);
-
-select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000002', true);
-insert into progress_history_results values (
-  'location-removed',
-  public.remove_memory_location(
-    (select id from public.memories where moment_id = (select payload ->> 'id' from progress_history_results where label = 'first')::uuid)
-  )
-);
-select is(
-  (select payload -> 'location' from progress_history_results where label = 'location-removed'),
-  'null'::jsonb,
-  'a Pair member can remove the approximate city'
-);
-insert into progress_history_results values ('map-empty', public.get_memory_map());
-select is(
-  jsonb_array_length((select payload from progress_history_results where label = 'map-empty')),
-  0,
-  'removing a city removes the Memory from Map'
-);
-
 select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000001', true);
 insert into progress_history_results values (
   'contribution-removed',
@@ -296,12 +256,6 @@ select is(
   0,
   'a third User cannot read the Pair History'
 );
-insert into progress_history_results values ('outsider-map', public.get_memory_map());
-select is(
-  jsonb_array_length((select payload from progress_history_results where label = 'outsider-map')),
-  0,
-  'a third User cannot read the Pair Map'
-);
 insert into progress_history_results values (
   'outsider-remove',
   public.remove_own_contribution(
@@ -332,19 +286,6 @@ select is(
   (select payload ->> 'memoryCount' from progress_history_results where label = 'archive-progress'),
   '2',
   'Archive Mode preserves Pom Progress'
-);
-insert into progress_history_results values (
-  'archive-location',
-  public.set_memory_location(
-    (select id from public.memories where moment_id = (select payload ->> 'id' from progress_history_results where label = 'first')::uuid),
-    'Madrid',
-    'ES'
-  )
-);
-select is(
-  (select payload ->> 'error' from progress_history_results where label = 'archive-location'),
-  'archive_read_only',
-  'Archive Mode blocks adding new location data'
 );
 insert into progress_history_results values ('archive-ribbon', public.set_pom_accessory('ribbon'));
 select is(

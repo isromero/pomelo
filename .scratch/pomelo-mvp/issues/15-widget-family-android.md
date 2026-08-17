@@ -22,7 +22,7 @@ Entregar en Android las mismas finalidades de Widget Family validadas para el pr
 - [ ] Photo conserva la jerarquía pareja principal y propia miniatura siempre que el tamaño del launcher lo permita sin perder legibilidad.
 - [ ] El User puede ocultar inmediatamente contenido visual y el widget muestra un estado neutro.
 - [ ] Distancia usa ciudades manuales, representa `Juntos` cuando corresponda y no solicita background GPS.
-- [ ] Important Date refleja la siguiente cuenta atrás y responde a cambios de fecha y zona horaria.
+- [ ] La próxima fecha refleja la Journal Entry, cumpleaños o aniversario elegible más cercano y responde a cambios, ocultación y zona horaria.
 - [ ] Los tamaños y estados vacíos siguen convenciones Android sin reducir las garantías de privacidad.
 - [ ] Todos los textos y fechas respetan el Locale del User y cada modo conserva legibilidad en apariencias clara y oscura del launcher.
 - [ ] Logout, unlinking, eliminación, retirada de ubicación y expiry limpian o neutralizan RemoteViews y archivos derivados.

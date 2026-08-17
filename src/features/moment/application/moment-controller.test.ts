@@ -316,7 +316,7 @@ describe('MomentController', () => {
     });
   });
 
-  it('refreshes Map and propagates location privacy changes through the controller', async () => {
+  it('keeps ritual Memories out of Map even when legacy fixtures contain a location', async () => {
     const repository = new FakeMomentRepository();
     const locatedMemory = {
       ...memory,
@@ -341,23 +341,7 @@ describe('MomentController', () => {
 
     await controller.start();
 
-    expect(controller.getSnapshot().map).toEqual(repository.map);
-
-    await controller.removeMemoryLocation(memory.id);
-
-    expect(controller.getSnapshot()).toMatchObject({
-      error: null,
-      history: [{ id: memory.id, location: null }],
-      map: [],
-    });
-
-    await controller.setMemoryLocation(memory.id, 'Madrid');
-
-    expect(controller.getSnapshot()).toMatchObject({
-      error: null,
-      history: [{ id: memory.id, location: { city: 'Madrid' } }],
-      map: [{ city: 'Madrid', memoryId: memory.id }],
-    });
+    expect(controller.getSnapshot().map).toEqual([]);
   });
 
   it('restores a private draft and marks it as needing synchronization', async () => {
