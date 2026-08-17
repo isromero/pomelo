@@ -20,6 +20,7 @@ export type Database = {
           photo_rear_path: string | null
           photo_rear_width: number | null
           photo_submission_id: string | null
+          removed_at: string | null
           response_choice: string | null
           response_text: string | null
           submitted_at: string
@@ -35,6 +36,7 @@ export type Database = {
           photo_rear_path?: string | null
           photo_rear_width?: number | null
           photo_submission_id?: string | null
+          removed_at?: string | null
           response_choice?: string | null
           response_text?: string | null
           submitted_at?: string
@@ -50,6 +52,7 @@ export type Database = {
           photo_rear_path?: string | null
           photo_rear_width?: number | null
           photo_submission_id?: string | null
+          removed_at?: string | null
           response_choice?: string | null
           response_text?: string | null
           submitted_at?: string
@@ -288,6 +291,51 @@ export type Database = {
           },
         ]
       }
+      memory_locations: {
+        Row: {
+          added_by: string
+          city: string
+          country_code: string | null
+          created_at: string
+          memory_id: string
+          pair_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_by: string
+          city: string
+          country_code?: string | null
+          created_at?: string
+          memory_id: string
+          pair_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string
+          city?: string
+          country_code?: string | null
+          created_at?: string
+          memory_id?: string
+          pair_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_locations_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: true
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memory_locations_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memory_widget_preferences: {
         Row: {
           memory_id: string
@@ -454,6 +502,35 @@ export type Database = {
             foreignKeyName: "pair_memberships_pair_id_fkey"
             columns: ["pair_id"]
             isOneToOne: false
+            referencedRelation: "pairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pair_progress: {
+        Row: {
+          equipped_accessory: string | null
+          memory_count: number
+          pair_id: string
+          updated_at: string
+        }
+        Insert: {
+          equipped_accessory?: string | null
+          memory_count?: number
+          pair_id: string
+          updated_at?: string
+        }
+        Update: {
+          equipped_accessory?: string | null
+          memory_count?: number
+          pair_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pair_progress_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: true
             referencedRelation: "pairs"
             referencedColumns: ["id"]
           },
@@ -840,8 +917,10 @@ export type Database = {
       get_doodle_session: { Args: { target_moment_id: string }; Returns: Json }
       get_important_date_widget: { Args: never; Returns: Json }
       get_memory_history: { Args: never; Returns: Json }
+      get_memory_map: { Args: never; Returns: Json }
       get_memory_thread: { Args: { target_memory_id: string }; Returns: Json }
       get_pair_state: { Args: never; Returns: Json }
+      get_pom_progress: { Args: never; Returns: Json }
       get_premium_state: { Args: never; Returns: Json }
       important_date_for_year: {
         Args: { target_date: string; target_year: number }
@@ -888,6 +967,7 @@ export type Database = {
       pair_has_premium: { Args: { target_pair_id: string }; Returns: boolean }
       pair_state_for_user: { Args: { target_user_id: string }; Returns: Json }
       pair_streak_payload: { Args: { target_pair_id: string }; Returns: Json }
+      pom_progress_payload: { Args: { target_pair_id: string }; Returns: Json }
       premium_subscription_payload: {
         Args: {
           target_subscription: Database["public"]["Tables"]["premium_subscriptions"]["Row"]
@@ -911,6 +991,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      remove_memory_location: {
+        Args: { target_memory_id: string }
+        Returns: Json
+      }
+      remove_own_contribution: {
+        Args: { target_contribution_id: string }
+        Returns: Json
+      }
       reveal_moment: { Args: { target_moment_id: string }; Returns: Json }
       save_doodle_snapshot: {
         Args: {
@@ -928,10 +1016,19 @@ export type Database = {
         }
         Returns: Json
       }
+      set_memory_location: {
+        Args: {
+          target_city: string
+          target_country_code?: string
+          target_memory_id: string
+        }
+        Returns: Json
+      }
       set_memory_widget_visibility: {
         Args: { enabled: boolean; target_memory_id: string }
         Returns: boolean
       }
+      set_pom_accessory: { Args: { target_accessory?: string }; Returns: Json }
       submit_photo_contribution: {
         Args: {
           client_submission_id: string

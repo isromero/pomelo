@@ -103,12 +103,28 @@ export type QuestionPrompt = {
 };
 
 export type Contribution = {
+  available?: boolean;
   id: string;
   photo?: PhotoContribution | null;
   responseChoice: string | null;
   responseText: string | null;
   submittedAt: string;
   userId: string;
+};
+
+export type MemoryLocation = {
+  addedBy: string;
+  city: string;
+  countryCode: string | null;
+  updatedAt: string;
+};
+
+export type MemoryMapEntry = {
+  city: string;
+  countryCode: string | null;
+  localDate: string;
+  memoryId: string;
+  revealedAt: string;
 };
 
 export type MomentPartner = {
@@ -140,6 +156,7 @@ export type Memory = {
   format?: MomentFormat;
   id: string;
   localDate: string;
+  location?: MemoryLocation | null;
   momentId: string;
   ownContribution: Contribution | null;
   pairId: string;

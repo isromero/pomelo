@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline } from 'react-native-svg';
 
@@ -31,7 +32,13 @@ function contributionText(contribution: Contribution) {
 }
 
 function errorKey(error: MomentErrorCode | null): TranslationKey {
-  return error === 'network' ? 'moment.error.network' : 'moment.error.unexpected';
+  if (error === 'network') {
+    return 'moment.error.network';
+  }
+  if (error === 'invalidLocation' || error === 'notAllowed') {
+    return 'history.locationError';
+  }
+  return 'moment.error.unexpected';
 }
 
 function formatKey(memory: Memory) {
@@ -126,7 +133,7 @@ function PhotoMemoryPreview({
     partnerPhoto?.rear.path,
   ]);
 
-  if (!ownPhoto || !partnerPhoto) {
+  if (!ownPhoto && !partnerPhoto) {
     return (
       <View style={styles.photoPlaceholder}>
         <Ionicons color={colors.muted} name="images-outline" size={24} />
@@ -136,17 +143,31 @@ function PhotoMemoryPreview({
   return (
     <View style={styles.photoComposition}>
       <View style={styles.photoPrimary}>
-        {urls.partnerRear ? (
-          <Image resizeMode="cover" source={{ uri: urls.partnerRear }} style={styles.photoImage} />
+        {(urls.partnerRear ?? urls.ownRear) ? (
+          <Image
+            cachePolicy="none"
+            contentFit="cover"
+            recyclingKey={urls.partnerRear ?? urls.ownRear ?? ''}
+            source={{ uri: urls.partnerRear ?? urls.ownRear ?? '' }}
+            style={styles.photoImage}
+          />
         ) : null}
-        {urls.partnerFront ? (
-          <Image resizeMode="cover" source={{ uri: urls.partnerFront }} style={styles.photoPartnerFront} />
+        {(urls.partnerFront ?? urls.ownFront) ? (
+          <Image
+            cachePolicy="none"
+            contentFit="cover"
+            recyclingKey={urls.partnerFront ?? urls.ownFront ?? ''}
+            source={{ uri: urls.partnerFront ?? urls.ownFront ?? '' }}
+            style={urls.partnerFront ? styles.photoPartnerFront : styles.photoOwnFront}
+          />
         ) : null}
       </View>
-      <View style={styles.photoThumbnail}>
-        {urls.ownRear ? <Image resizeMode="cover" source={{ uri: urls.ownRear }} style={styles.photoImage} /> : null}
-        {urls.ownFront ? <Image resizeMode="cover" source={{ uri: urls.ownFront }} style={styles.photoOwnFront} /> : null}
-      </View>
+      {ownPhoto && partnerPhoto ? (
+        <View style={styles.photoThumbnail}>
+          {urls.ownRear ? <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.ownRear} source={{ uri: urls.ownRear }} style={styles.photoImage} /> : null}
+          {urls.ownFront ? <Image cachePolicy="none" contentFit="cover" recyclingKey={urls.ownFront} source={{ uri: urls.ownFront }} style={styles.photoOwnFront} /> : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -156,6 +177,7 @@ function MemoryCard({
   memory,
   ownUserId,
   onToggleThread,
+  canAddLocation,
   threadController,
   threadOpen,
 }: {
@@ -163,12 +185,64 @@ function MemoryCard({
   memory: Memory;
   ownUserId: string;
   onToggleThread(): void;
+  canAddLocation: boolean;
   threadController: ReturnType<typeof useThreadController>;
   threadOpen: boolean;
 }) {
   const { colors } = useAppearance();
   const { locale, t } = useLocale();
   const styles = createStyles(colors);
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [locationDraft, setLocationDraft] = useState(memory.location?.city ?? '');
+  const ownContribution = memory.ownContribution;
+  const ownContributionAvailable = ownContribution?.available !== false;
+  const partnerContribution = memory.partner.contribution;
+  const ownContributionText = ownContribution
+    ? ownContributionAvailable
+      ? contributionText(ownContribution)
+      : t('history.deletedContribution')
+    : t('history.missingContribution');
+
+  const removeLocation = () => {
+    Alert.alert(t('history.removeLocationTitle'), t('history.removeLocationBody'), [
+      { style: 'cancel', text: t('common.cancel') },
+      {
+        onPress: () => void controller.removeMemoryLocation(memory.id),
+        style: 'destructive',
+        text: t('history.removeConfirm'),
+      },
+    ]);
+  };
+
+  const removeContribution = () => {
+    if (!ownContribution) {
+      return;
+    }
+    Alert.alert(t('history.removeContributionTitle'), t('history.removeContributionBody'), [
+      { style: 'cancel', text: t('common.cancel') },
+      {
+        onPress: () => void controller.removeOwnContribution(ownContribution.id),
+        style: 'destructive',
+        text: t('history.removeConfirm'),
+      },
+    ]);
+  };
+
+  const saveLocation = () => {
+    void controller
+      .setMemoryLocation(memory.id, locationDraft)
+      .then((saved) => {
+        if (saved) {
+          setEditingLocation(false);
+        }
+      });
+  };
+
+  const partnerContributionText = partnerContribution
+    ? partnerContribution.available === false
+      ? t('history.deletedContribution')
+      : contributionText(partnerContribution)
+    : t('history.missingContribution');
   return (
     <View style={styles.memoryCard}>
       <View style={styles.memoryMeta}>
@@ -192,18 +266,74 @@ function MemoryCard({
             <View style={[styles.conversationBubble, styles.partnerBubble]}>
               <Text style={styles.sender}>{memory.partner.displayName}</Text>
               <Text style={styles.conversationText}>
-                {memory.partner.contribution
-                  ? contributionText(memory.partner.contribution)
-                  : t('history.missingContribution')}
+                {partnerContributionText}
               </Text>
             </View>
           </View>
           <View style={[styles.bubbleRow, styles.ownRow]}>
             <View style={[styles.conversationBubble, styles.ownBubble]}>
               <Text style={styles.sender}>{t('moment.you')}</Text>
-              <Text style={styles.conversationText}>{contributionText(memory.ownContribution)}</Text>
+              <Text style={styles.conversationText}>{ownContributionText}</Text>
             </View>
           </View>
+        </View>
+      ) : null}
+      {ownContribution && ownContributionAvailable ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={removeContribution}
+          style={styles.contributionAction}>
+          <Ionicons color={colors.actionDeep} name="eye-off-outline" size={16} />
+          <Text style={styles.contributionActionText}>{t('history.removeContribution')}</Text>
+        </Pressable>
+      ) : ownContribution ? (
+        <Text style={styles.deletedText}>{t('history.contributionRemoved')}</Text>
+      ) : null}
+      {memory.location || canAddLocation ? (
+        <View style={styles.locationSection}>
+          {memory.location && !editingLocation ? (
+            <View style={styles.locationHeader}>
+              <View style={styles.locationValue}>
+                <Ionicons color={colors.actionDeep} name="location-outline" size={16} />
+                <Text style={styles.locationText}>{memory.location.city}</Text>
+              </View>
+              <Pressable accessibilityRole="button" onPress={removeLocation} style={styles.locationButton}>
+                <Text style={styles.locationButtonText}>{t('history.removeLocation')}</Text>
+              </Pressable>
+            </View>
+          ) : editingLocation ? (
+            <View style={styles.locationEditor}>
+              <TextInput
+                autoCapitalize="words"
+                maxLength={120}
+                onChangeText={setLocationDraft}
+                placeholder={t('history.locationPlaceholder')}
+                placeholderTextColor={colors.muted}
+                style={styles.locationInput}
+                value={locationDraft}
+              />
+              <View style={styles.locationActions}>
+                <Pressable accessibilityRole="button" onPress={() => setEditingLocation(false)} style={styles.locationButton}>
+                  <Text style={styles.locationButtonText}>{t('common.cancel')}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={saveLocation} style={styles.locationAction}>
+                  <Text style={styles.locationActionText}>{t('history.saveLocation')}</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.locationPrivacy}>{t('history.locationPrivacy')}</Text>
+            </View>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setLocationDraft(memory.location?.city ?? '');
+                setEditingLocation(true);
+              }}
+              style={styles.locationAdd}>
+              <Ionicons color={colors.actionDeep} name="add-circle-outline" size={17} />
+              <Text style={styles.locationButtonText}>{t('history.addLocation')}</Text>
+            </Pressable>
+          )}
         </View>
       ) : null}
       {memory.format === 'photo' ? (
@@ -230,7 +360,7 @@ function MemoryCard({
   );
 }
 
-export function HistoryScreen() {
+export function HistoryScreen({ pairStatus = 'active' }: { pairStatus?: 'active' | 'archived' } = {}) {
   const { colors } = useAppearance();
   const { profile } = useAccount();
   const { error, history, moment, status, controller } = useMoment();
@@ -238,6 +368,12 @@ export function HistoryScreen() {
   const { t } = useLocale();
   const styles = createStyles(colors);
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
+  const { memoryId: requestedMemoryId } = useLocalSearchParams<{ memoryId?: string }>();
+  const selectedMemoryId = typeof requestedMemoryId === 'string' ? requestedMemoryId : null;
+  const selectedMemory = selectedMemoryId
+    ? history.find((memory) => memory.id === selectedMemoryId) ?? null
+    : null;
+  const visibleHistory = selectedMemory ? [selectedMemory] : history;
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
@@ -253,6 +389,12 @@ export function HistoryScreen() {
           <Text style={styles.eyebrow}>{t('section.history.eyebrow')}</Text>
           <Text style={styles.title}>{t('history.title')}</Text>
           <Text style={styles.body}>{t('history.body')}</Text>
+          {selectedMemory ? (
+            <Pressable accessibilityRole="button" onPress={() => router.replace('/history')} style={styles.backButton}>
+              <Ionicons color={colors.actionDeep} name="arrow-back" size={16} />
+              <Text style={styles.backButtonText}>{t('map.backToHistory')}</Text>
+            </Pressable>
+          ) : null}
 
           {status === 'loading' || status === 'idle' ? (
             <View style={[styles.emptyCard, styles.centered]}>
@@ -285,8 +427,9 @@ export function HistoryScreen() {
               </Pressable>
             </View>
           ) : (
-            history.map((memory) => (
+            visibleHistory.map((memory) => (
               <MemoryCard
+                canAddLocation={pairStatus === 'active'}
                 controller={controller}
                 key={memory.id}
                 memory={memory}
@@ -386,6 +529,7 @@ const createStyles = (colors: SemanticColors) =>
       textTransform: 'uppercase',
     },
     conversationText: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
+    deletedText: { color: colors.muted, fontFamily: fonts.body, fontSize: 11, fontStyle: 'italic' },
     photoComposition: { aspectRatio: 1.3, flexDirection: 'row', gap: 8 },
     photoPrimary: { backgroundColor: colors.backgroundRaised, borderRadius: 18, flex: 1, overflow: 'hidden' },
     photoThumbnail: { alignSelf: 'flex-end', backgroundColor: colors.backgroundRaised, borderColor: colors.surface, borderRadius: 13, borderWidth: 3, bottom: 8, height: 72, overflow: 'hidden', position: 'absolute', right: 8, width: 58 },
@@ -394,6 +538,34 @@ const createStyles = (colors: SemanticColors) =>
     photoPartnerFront: { borderColor: colors.surface, borderRadius: 9, borderWidth: 2, bottom: 9, height: 82, position: 'absolute', right: 9, width: 64 },
     photoPlaceholder: { alignItems: 'center', aspectRatio: 1.3, backgroundColor: colors.backgroundRaised, borderRadius: 18, justifyContent: 'center' },
     doodlePreview: { aspectRatio: 320 / 380, backgroundColor: colors.backgroundRaised, borderRadius: 18, overflow: 'hidden', padding: 8 },
+    contributionAction: { alignItems: 'center', flexDirection: 'row', gap: 7, paddingVertical: 2 },
+    contributionActionText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10 },
+    locationSection: { borderTopColor: colors.borderSoft, borderTopWidth: 1, paddingTop: 12 },
+    locationHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    locationValue: { alignItems: 'center', flexDirection: 'row', gap: 7, flexShrink: 1 },
+    locationText: { color: colors.ink, fontFamily: fonts.bodySemiBold, fontSize: 12 },
+    locationButton: { paddingVertical: 3 },
+    locationButtonText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10 },
+    locationAdd: { alignItems: 'center', flexDirection: 'row', gap: 7, paddingVertical: 2 },
+    locationEditor: { gap: 9 },
+    locationInput: {
+      backgroundColor: colors.backgroundRaised,
+      borderColor: colors.borderSoft,
+      borderRadius: 12,
+      borderWidth: 1,
+      color: colors.ink,
+      fontFamily: fonts.body,
+      fontSize: 12,
+      minHeight: 43,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+    },
+    locationActions: { alignItems: 'center', flexDirection: 'row', gap: 14, justifyContent: 'flex-end' },
+    locationAction: { backgroundColor: colors.actionSoft, borderRadius: radii.full, paddingHorizontal: 12, paddingVertical: 8 },
+    locationActionText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10 },
+    locationPrivacy: { color: colors.muted, fontFamily: fonts.body, fontSize: 10 },
+    backButton: { alignItems: 'center', flexDirection: 'row', gap: 7, marginTop: 5, paddingVertical: 3 },
+    backButtonText: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 11 },
     widgetToggle: { alignItems: 'center', flexDirection: 'row', gap: 7 },
     widgetToggleText: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 10 },
     threadButton: { alignItems: 'center', flexDirection: 'row', gap: 7, paddingVertical: 3 },

@@ -7,6 +7,7 @@ import {
 import type {
   DailyMoment,
   Memory,
+  MemoryMapEntry,
 } from '@/features/moment/domain/moment';
 
 const prompt = {
@@ -94,6 +95,7 @@ class FakeMomentRepository implements MomentRepository {
   listener: (() => void) | null = null;
   moment = openMoment;
   history: Memory[] = [];
+  map: MemoryMapEntry[] = [];
   submitCalls = 0;
   revealCalls = 0;
   revealError: MomentError | null = null;
@@ -117,6 +119,32 @@ class FakeMomentRepository implements MomentRepository {
 
   async getHistory() {
     return this.history;
+  }
+
+  async getMemoryMap() {
+    return this.map;
+  }
+
+  async setMemoryLocation(memoryId: string, city: string) {
+    const current = this.history.find((item) => item.id === memoryId) ?? memory;
+    const next = {
+      ...current,
+      location: {
+        addedBy: 'user-1',
+        city,
+        countryCode: null,
+        updatedAt: '2026-08-16T10:03:00.000Z',
+      },
+    };
+    this.history = this.history.map((item) => (item.id === memoryId ? next : item));
+    return next;
+  }
+
+  async removeMemoryLocation(memoryId: string) {
+    const current = this.history.find((item) => item.id === memoryId) ?? memory;
+    const next = { ...current, location: null };
+    this.history = this.history.map((item) => (item.id === memoryId ? next : item));
+    return next;
   }
 
   async submitQuestion() {
@@ -285,6 +313,50 @@ describe('MomentController', () => {
       history: [memory],
       moment: null,
       status: 'ready',
+    });
+  });
+
+  it('refreshes Map and propagates location privacy changes through the controller', async () => {
+    const repository = new FakeMomentRepository();
+    const locatedMemory = {
+      ...memory,
+      location: {
+        addedBy: 'user-1',
+        city: 'Barcelona',
+        countryCode: 'ES',
+        updatedAt: '2026-08-16T10:03:00.000Z',
+      },
+    };
+    repository.history = [locatedMemory];
+    repository.map = [
+      {
+        city: 'Barcelona',
+        countryCode: 'ES',
+        localDate: memory.localDate,
+        memoryId: memory.id,
+        revealedAt: memory.revealedAt,
+      },
+    ];
+    const controller = new MomentController(repository);
+
+    await controller.start();
+
+    expect(controller.getSnapshot().map).toEqual(repository.map);
+
+    await controller.removeMemoryLocation(memory.id);
+
+    expect(controller.getSnapshot()).toMatchObject({
+      error: null,
+      history: [{ id: memory.id, location: null }],
+      map: [],
+    });
+
+    await controller.setMemoryLocation(memory.id, 'Madrid');
+
+    expect(controller.getSnapshot()).toMatchObject({
+      error: null,
+      history: [{ id: memory.id, location: { city: 'Madrid' } }],
+      map: [{ city: 'Madrid', memoryId: memory.id }],
     });
   });
 

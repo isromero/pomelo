@@ -11,6 +11,7 @@ import { createWidget, WidgetEnvironment } from 'expo-widgets';
 import { widgetColors } from '@/constants/pomelo-theme';
 
 export type PomeloStatusWidgetProps = {
+  accessoryLabel?: string;
   action: string;
   title: string;
 };
@@ -36,6 +37,11 @@ function PomeloStatusWidget(
       <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(colors.action)]}>
         {props.action}
       </Text>
+      {props.accessoryLabel ? (
+        <Text modifiers={[font({ size: 11, weight: 'medium' }), foregroundStyle(colors.title)]}>
+          {props.accessoryLabel}
+        </Text>
+      ) : null}
     </VStack>
   );
 }

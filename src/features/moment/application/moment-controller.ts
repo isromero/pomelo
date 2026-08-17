@@ -3,6 +3,7 @@ import {
   validateQuestionResponse,
   type DailyMoment,
   type Memory,
+  type MemoryMapEntry,
   type PhotoDraft,
   type QuestionPrompt,
   type QuestionResponse,
@@ -13,6 +14,7 @@ export type MomentErrorCode =
   | 'configuration'
   | 'draftStorage'
   | 'invalidFormat'
+  | 'invalidLocation'
   | 'invalidResponse'
   | 'momentClosed'
   | 'momentNotFound'
@@ -35,10 +37,14 @@ export class MomentError extends Error {
 export interface MomentRepository {
   getDailyMoment(): Promise<DailyMoment>;
   getHistory(): Promise<Memory[]>;
+  getMemoryMap?(): Promise<MemoryMapEntry[]>;
   revealMoment(momentId: string): Promise<DailyMoment>;
   submitQuestion(momentId: string, response: QuestionResponse): Promise<DailyMoment>;
   submitPhoto?(momentId: string, draft: PhotoDraft, submissionKey: string): Promise<DailyMoment>;
   setMemoryWidgetVisibility?(memoryId: string, enabled: boolean): Promise<boolean>;
+  setMemoryLocation?(memoryId: string, city: string, countryCode?: string): Promise<Memory>;
+  removeMemoryLocation?(memoryId: string): Promise<Memory>;
+  removeOwnContribution?(contributionId: string): Promise<Memory>;
   createPrivateMediaUrl?(path: string): Promise<string>;
   subscribe(listener: () => void): () => void;
 }
@@ -62,6 +68,7 @@ export type MomentSnapshot = {
   draft: QuestionResponse | null;
   error: MomentErrorCode | null;
   history: Memory[];
+  map: MemoryMapEntry[];
   moment: DailyMoment | null;
   photoDraft: PhotoDraft | null;
   syncPending: boolean;
@@ -85,6 +92,7 @@ const initialSnapshot: MomentSnapshot = {
   draft: null,
   error: null,
   history: [],
+  map: [],
   moment: null,
   photoDraft: null,
   syncPending: false,
@@ -163,6 +171,11 @@ export class MomentController {
       return;
     }
 
+    const map = await this.readMap(historyResult.value);
+    if (operation !== this.operation || request !== this.refreshRequest) {
+      return;
+    }
+
     if (momentResult.status === 'fulfilled') {
       const draft = momentResult.value.ownContribution || momentResult.value.format !== 'question'
         ? null
@@ -178,6 +191,7 @@ export class MomentController {
         draft,
         error: null,
         history: historyResult.value,
+        map,
         moment: momentResult.value,
         photoDraft,
         syncPending: draft !== null || photoDraft !== null,
@@ -192,6 +206,7 @@ export class MomentController {
         draft: null,
         error: dailyError,
         history: historyResult.value,
+        map,
         moment: null,
         photoDraft: null,
         syncPending: false,
@@ -203,6 +218,7 @@ export class MomentController {
     this.update({
       error: dailyError,
       history: historyResult.value,
+      map,
       status: recovering || this.snapshot.status === 'loading' ? 'error' : 'ready',
     });
   }
@@ -343,6 +359,51 @@ export class MomentController {
     }
   }
 
+  async setMemoryLocation(memoryId: string, city: string, countryCode?: string): Promise<boolean> {
+    if (!this.repository.setMemoryLocation) {
+      this.update({ error: 'configuration' });
+      return false;
+    }
+    if (!city.trim() || city.trim().length > 120) {
+      this.update({ error: 'invalidLocation' });
+      return false;
+    }
+    try {
+      const memory = await this.repository.setMemoryLocation(memoryId, city, countryCode);
+      this.acceptMemory(memory);
+      return true;
+    } catch (error) {
+      this.update({ error: errorCode(error) });
+      return false;
+    }
+  }
+
+  async removeMemoryLocation(memoryId: string) {
+    if (!this.repository.removeMemoryLocation) {
+      this.update({ error: 'configuration' });
+      return;
+    }
+    try {
+      const memory = await this.repository.removeMemoryLocation(memoryId);
+      this.acceptMemory(memory);
+    } catch (error) {
+      this.update({ error: errorCode(error) });
+    }
+  }
+
+  async removeOwnContribution(contributionId: string) {
+    if (!this.repository.removeOwnContribution) {
+      this.update({ error: 'configuration' });
+      return;
+    }
+    try {
+      const memory = await this.repository.removeOwnContribution(contributionId);
+      this.acceptMemory(memory);
+    } catch (error) {
+      this.update({ error: errorCode(error) });
+    }
+  }
+
   async createPrivateMediaUrl(path: string) {
     if (!this.repository.createPrivateMediaUrl) {
       throw new MomentError('configuration');
@@ -371,6 +432,26 @@ export class MomentController {
     } catch {
       return null;
     }
+  }
+
+  private async readMap(history: Memory[]) {
+    if (this.repository.getMemoryMap) {
+      try {
+        return await this.repository.getMemoryMap();
+      } catch {
+        return mapEntriesFromHistory(history);
+      }
+    }
+    return mapEntriesFromHistory(history);
+  }
+
+  private acceptMemory(memory: Memory) {
+    const history = this.snapshot.history.map((item) => item.id === memory.id ? memory : item);
+    this.update({
+      error: null,
+      history,
+      map: mapEntriesFromHistory(history),
+    });
   }
 
   private async readPhotoDraft(momentId: string) {
@@ -429,4 +510,16 @@ function createClientId() {
     return globalThis.crypto.randomUUID();
   }
   return `photo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function mapEntriesFromHistory(history: Memory[]): MemoryMapEntry[] {
+  return history
+    .filter((memory): memory is Memory & { location: NonNullable<Memory['location']> } => Boolean(memory.location))
+    .map((memory) => ({
+      city: memory.location.city,
+      countryCode: memory.location.countryCode,
+      localDate: memory.localDate,
+      memoryId: memory.id,
+      revealedAt: memory.revealedAt,
+    }));
 }
