@@ -1126,6 +1126,7 @@ export type Database = {
       get_daily_moment_legacy: { Args: never; Returns: Json }
       get_doodle_session: { Args: { target_moment_id: string }; Returns: Json }
       get_important_date_widget: { Args: never; Returns: Json }
+      get_journal_access: { Args: never; Returns: Json }
       get_journal_calendar: {
         Args: { range_end: string; range_start: string }
         Returns: Json

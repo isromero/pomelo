@@ -211,6 +211,40 @@ $$;
 revoke all on function public.get_journal_entries() from public, anon;
 grant execute on function public.get_journal_entries() to authenticated;
 
+create function public.get_journal_access()
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  selected_pair public.pairs%rowtype;
+  allowance_consumed boolean := false;
+begin
+  select p.* into selected_pair
+  from public.pair_memberships membership
+  join public.pairs p on p.id = membership.pair_id
+  where membership.user_id = current_user_id and p.status in ('active', 'archived')
+  order by (membership.ended_at is null) desc, membership.joined_at desc
+  limit 1;
+  if selected_pair.id is null then return jsonb_build_object('error', 'not_allowed'); end if;
+  select coalesce(free_entry_consumed, false) into allowance_consumed
+  from public.pair_journal_state where pair_id = selected_pair.id;
+  return jsonb_build_object(
+    'freeEntryConsumed', allowance_consumed,
+    'canCreate', selected_pair.status = 'active'
+      and (not allowance_consumed or public.pair_has_premium(selected_pair.id)),
+    'isPremium', public.pair_has_premium(selected_pair.id),
+    'readOnly', selected_pair.status != 'active'
+  );
+end;
+$$;
+
+revoke all on function public.get_journal_access() from public, anon;
+grant execute on function public.get_journal_access() to authenticated;
+
 create function public.create_journal_entry(
   target_title text,
   target_body text,
@@ -846,3 +880,10 @@ alter publication supabase_realtime add table public.journal_entries, public.jou
 revoke execute on function public.get_memory_map() from authenticated;
 revoke execute on function public.set_memory_location(uuid, text, text) from authenticated;
 revoke execute on function public.remove_memory_location(uuid) from authenticated;
+revoke execute on function public.create_important_date(text, text, date, text) from authenticated;
+revoke execute on function public.update_important_date(uuid, text, text, date, text) from authenticated;
+revoke execute on function public.delete_important_date(uuid) from authenticated;
+revoke execute on function public.get_important_date_widget() from authenticated;
+revoke select on table public.memory_locations from authenticated;
+revoke select on table public.important_dates from authenticated;
+alter publication supabase_realtime drop table public.memory_locations, public.important_dates;

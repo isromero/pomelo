@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { useAppearance } from '@/appearance/appearance-provider';
@@ -21,13 +21,12 @@ function cluster(entries: JournalMapEntry[]) {
 
 export function JournalMap({ entries, onOpen }: { entries: JournalMapEntry[]; onOpen(id: string): void }) {
   const { colors } = useAppearance();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   const styles = createStyles(colors);
   const mapRef = useRef<MapView>(null);
   const [filters, setFilters] = useState<Filter[]>(['lived', 'upcoming']);
-  const [selected, setSelected] = useState<JournalMapEntry | null>(null);
-  const copy = locale === 'es' ? { empty: 'Las entradas con un lugar confirmado aparecerán aquí.', lived: 'Vivido', upcoming: 'Por vivir', open: 'Abrir entrada' }
-    : { empty: 'Entries with a confirmed place will appear here.', lived: 'Lived', upcoming: 'Still to live', open: 'Open entry' };
+  const [selected, setSelected] = useState<JournalMapEntry[] | null>(null);
+  const copy = { empty: t('journal.map.empty'), lived: t('journal.lived'), open: t('journal.map.open'), upcoming: t('journal.upcoming') };
   const visible = useMemo(() => entries.filter((entry) => filters.includes(entry.state === 'upcoming' ? 'upcoming' : 'lived')), [entries, filters]);
   const groups = useMemo(() => cluster(visible), [visible]);
   const counts = useMemo(() => ({
@@ -101,7 +100,7 @@ export function JournalMap({ entries, onOpen }: { entries: JournalMapEntry[]; on
           const entry = group[0];
           const upcoming = entry.state === 'upcoming';
           return (
-            <Marker coordinate={entry.location} key={group.map((item) => item.id).join(':')} onPress={() => setSelected(entry)}>
+            <Marker coordinate={entry.location} key={group.map((item) => item.id).join(':')} onPress={() => setSelected(group)}>
               <View style={[styles.pin, { backgroundColor: upcoming ? colors.action : colors.positive }]}>
                 {group.length > 1 ? <Text style={styles.pinCount}>{group.length}</Text> : <Ionicons color={colors.white} name={upcoming ? 'sparkles' : 'heart'} size={15} />}
               </View>
@@ -110,14 +109,20 @@ export function JournalMap({ entries, onOpen }: { entries: JournalMapEntry[]; on
         })}
       </MapView>
       {selected ? (
-        <Pressable onPress={() => onOpen(selected.id)} style={styles.sheet}>
-          <View style={styles.sheetCopy}>
-            <Text style={styles.sheetDate}>{selected.startDate} - {selected.state === 'upcoming' ? copy.upcoming : copy.lived}</Text>
-            <Text style={styles.sheetTitle}>{selected.title}</Text>
-            <Text numberOfLines={1} style={styles.sheetPlace}>{selected.location.label}</Text>
-          </View>
-          <View style={styles.open}><Ionicons color={colors.white} name="arrow-forward" size={18} /></View>
-        </Pressable>
+        <View style={styles.sheet}>
+          <ScrollView contentContainerStyle={styles.sheetList} showsVerticalScrollIndicator={false}>
+            {selected.map((entry) => (
+              <Pressable key={entry.id} onPress={() => onOpen(entry.id)} style={styles.sheetRow}>
+                <View style={styles.sheetCopy}>
+                  <Text style={styles.sheetDate}>{entry.startDate} - {entry.state === 'upcoming' ? copy.upcoming : copy.lived}</Text>
+                  <Text style={styles.sheetTitle}>{entry.title}</Text>
+                  <Text numberOfLines={1} style={styles.sheetPlace}>{entry.location.label}</Text>
+                </View>
+                <View style={styles.open}><Ionicons color={colors.white} name="arrow-forward" size={18} /></View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
       ) : null}
     </View>
   );
@@ -135,10 +140,12 @@ const createStyles = (colors: SemanticColors) => StyleSheet.create({
   open: { alignItems: 'center', backgroundColor: colors.action, borderRadius: 18, height: 38, justifyContent: 'center', width: 38 },
   pin: { alignItems: 'center', borderColor: colors.white, borderRadius: 22, borderWidth: 3, height: 42, justifyContent: 'center', width: 42 },
   pinCount: { color: colors.white, fontFamily: fonts.bodyBold, fontSize: 12 },
-  sheet: { alignItems: 'center', backgroundColor: colors.surfaceStrong, borderRadius: 20, bottom: 12, flexDirection: 'row', left: 12, padding: 14, position: 'absolute', right: 12 },
+  sheet: { backgroundColor: colors.surfaceStrong, borderRadius: 20, bottom: 12, left: 12, maxHeight: 220, padding: 7, position: 'absolute', right: 12 },
   sheetCopy: { flex: 1, gap: 2 },
   sheetDate: { color: colors.actionDeep, fontFamily: fonts.bodyBold, fontSize: 10, textTransform: 'uppercase' },
   sheetPlace: { color: colors.inkSecondary, fontFamily: fonts.body, fontSize: 11 },
+  sheetList: { gap: 2 },
+  sheetRow: { alignItems: 'center', flexDirection: 'row', padding: 7 },
   sheetTitle: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 17 },
   shell: { borderRadius: 24, height: 520, overflow: 'hidden' },
 });

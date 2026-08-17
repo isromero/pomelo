@@ -24,7 +24,7 @@ export function WidgetEntryScreen() {
   const { entries, projection } = useJournal();
   const { progress } = usePomProgress();
   const premium = usePremium();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [snapshotUpdated, setSnapshotUpdated] = useState(false);
 
   useEffect(() => {
@@ -35,7 +35,10 @@ export function WidgetEntryScreen() {
         accessoryLabel: progress?.equippedAccessory
           ? t(accessoryLabels[progress.equippedAccessory])
           : undefined,
-        action: locked ? t('premium.unlock') : next?.startDate ?? t('widget.action'),
+        action: locked ? t('premium.unlock') : next
+          ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' })
+            .format(new Date(`${next.startDate}T12:00:00`))
+          : t('widget.action'),
         title: locked ? t('premium.widget.title') : next?.name ?? t('widget.title'),
         url: next?.kind === 'entry'
           ? `pomelo://diary?entryId=${encodeURIComponent(next.id)}`
@@ -46,7 +49,7 @@ export function WidgetEntryScreen() {
     } finally {
       setSnapshotUpdated(true);
     }
-  }, [entries, premium.access, progress?.equippedAccessory, projection.upcoming, t]);
+  }, [entries, locale, premium.access, progress?.equippedAccessory, projection.upcoming, t]);
 
   if (!snapshotUpdated || status === 'booting') {
     return null;

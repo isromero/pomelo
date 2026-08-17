@@ -1,10 +1,9 @@
 begin;
 
-select plan(31);
+select plan(22);
 
 select has_table('public', 'pair_streaks', 'Pair Streak storage exists');
 select has_table('public', 'streak_completions', 'Streak completion idempotency storage exists');
-select has_table('public', 'important_dates', 'Important Date storage exists');
 select has_column('public', 'moments', 'normal_expires_at', 'Moments store the normal deadline');
 select has_column('public', 'moments', 'recovery_expires_at', 'Moments store the recovery deadline');
 
@@ -255,83 +254,11 @@ select is(
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000001', true);
-insert into lifecycle_test_results values (
-  'created-date',
-  public.create_important_date('trip', 'Lisbon', current_date + 5, 'once')
-);
-select is(
-  jsonb_array_length((select payload -> 'importantDates' from lifecycle_test_results where label = 'created-date')),
-  1,
-  'a member can create one Pair-owned Important Date'
-);
-select ok(
-  (select payload -> 'nextImportantDate' from lifecycle_test_results where label = 'created-date') is not null,
-  'Pair state returns a next Important Date for the countdown'
-);
-select ok(
-  (select (public.get_important_date_widget() ->> 'daysRemaining')::integer >= 0),
-  'the widget contract exposes a non-negative countdown'
-);
-
-select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000002', true);
-insert into lifecycle_test_results values ('partner-dates', public.get_pair_state());
-select is(
-  (select payload #>> '{importantDates,0,name}' from lifecycle_test_results where label = 'partner-dates'),
-  'Lisbon',
-  'the other Pair member receives the same Important Date'
-);
-
-select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000003', true);
-select is(
-  (select count(*)::integer
-   from public.important_dates
-   where pair_id = ((select payload ->> 'id' from lifecycle_test_results where label = 'pair'))::uuid),
-  0,
-  'a third User cannot read a Pair Important Date'
-);
-
-select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000001', true);
-insert into lifecycle_test_results values (
-  'updated-date',
-  public.update_important_date(
-    ((select payload #>> '{importantDates,0,id}' from lifecycle_test_results where label = 'created-date'))::uuid,
-    'custom',
-    'Lisbon anniversary',
-    current_date + 8,
-    'yearly'
-  )
-);
-select is(
-  (select payload #>> '{importantDates,0,name}' from lifecycle_test_results where label = 'updated-date'),
-  'Lisbon anniversary',
-  'a Pair member can edit a Pair-owned Important Date'
-);
-
-select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000002', true);
-insert into lifecycle_test_results values (
-  'deleted-date',
-  public.delete_important_date(
-    ((select payload #>> '{importantDates,0,id}' from lifecycle_test_results where label = 'updated-date'))::uuid
-  )
-);
-select is(
-  jsonb_array_length((select payload -> 'importantDates' from lifecycle_test_results where label = 'deleted-date')),
-  0,
-  'deleting a date updates the shared Pair state'
-);
-
-select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000001', true);
 insert into lifecycle_test_results values ('unlinked', public.dissolve_pair());
 select is(
   (select payload ->> 'status' from lifecycle_test_results where label = 'unlinked'),
   'archived',
   'unlinking archives the Pair'
 );
-select is(
-  jsonb_array_length((select payload -> 'importantDates' from lifecycle_test_results where label = 'unlinked')),
-  0,
-  'unlinking removes Important Date exposure from the returned device state'
-);
-
 select * from finish();
 rollback;

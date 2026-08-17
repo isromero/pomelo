@@ -8,12 +8,12 @@ import { useLocale } from '@/localization/locale-provider';
 
 export function JournalMap({ entries, onOpen }: { entries: JournalMapEntry[]; onOpen(id: string): void }) {
   const { colors } = useAppearance();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   return (
     <View style={styles.shell}>
       <View style={[styles.notice, { backgroundColor: colors.informativeSoft }]}>
         <Ionicons color={colors.inkSecondary} name="map-outline" size={20} />
-        <Text style={[styles.noticeText, { color: colors.inkSecondary }]}>{locale === 'es' ? 'El mapa interactivo está disponible en iOS y Android.' : 'The interactive map is available on iOS and Android.'}</Text>
+        <Text style={[styles.noticeText, { color: colors.inkSecondary }]}>{t('journal.map.mobile')}</Text>
       </View>
       {entries.map((entry) => (
         <Pressable key={entry.id} onPress={() => onOpen(entry.id)} style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.borderSoft }]}>

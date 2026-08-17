@@ -283,7 +283,7 @@ function MemoryCard({
         <Ionicons color={colors.actionDeep} name="chatbubble-ellipses-outline" size={16} />
         <Text style={styles.threadButtonText}>{threadOpen ? t('thread.close') : t('thread.open')}</Text>
       </Pressable>
-      {threadOpen ? <ThreadPanel controller={threadController} memoryId={memory.id} ownUserId={ownUserId} /> : null}
+      {threadOpen ? <ThreadPanel controller={threadController} ownUserId={ownUserId} targetId={memory.id} /> : null}
     </View>
   );
 }

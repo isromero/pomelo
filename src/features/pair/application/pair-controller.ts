@@ -2,11 +2,6 @@ import {
   normalizeInvitationCredential,
   validateAnniversary,
 } from '@/features/pair/domain/pair';
-import type {
-  ImportantDateInput,
-  ImportantDate,
-  NextImportantDate,
-} from '@/features/pair/domain/important-date';
 
 export type PairStatus = 'active' | 'archived' | 'waiting';
 export type InvitationStatus = 'accepted' | 'cancelled' | 'expired' | 'pending';
@@ -31,10 +26,8 @@ export type PairInvitation = {
 export type PairState = {
   anniversary: string;
   id: string;
-  importantDates: ImportantDate[];
   invitation: PairInvitation | null;
   members: PairMember[];
-  nextImportantDate: NextImportantDate | null;
   status: PairStatus;
   timeZone: string;
 };
@@ -66,9 +59,7 @@ export type PairErrorCode =
   | 'invitationExpired'
   | 'invitationInvalid'
   | 'invitationUsed'
-  | 'invalidImportantDate'
   | 'invalidAnniversary'
-  | 'importantDateNotFound'
   | 'network'
   | 'notAllowed'
   | 'pairFull'
@@ -87,10 +78,6 @@ export interface PairRepository {
   createInvitation(): Promise<PairState>;
   createPair(anniversary: string): Promise<PairState>;
   dissolvePair(): Promise<PairState>;
-  createImportantDate(input: ImportantDateInput): Promise<PairState>;
-  updateImportantDate(id: string, input: ImportantDateInput): Promise<PairState>;
-  deleteImportantDate(id: string): Promise<PairState>;
-  getImportantDateWidget(): Promise<NextImportantDate | null>;
   getState(): Promise<PairState | null>;
   previewInvitation(credential: string): Promise<InvitationPreview>;
   subscribe(listener: () => void): () => void;
@@ -230,26 +217,6 @@ export class PairController {
 
   async dissolvePair() {
     await this.runStateOperation(() => this.repository.dissolvePair());
-  }
-
-  async createImportantDate(input: ImportantDateInput) {
-    await this.runStateOperation(() => this.repository.createImportantDate(input));
-  }
-
-  async updateImportantDate(id: string, input: ImportantDateInput) {
-    await this.runStateOperation(() => this.repository.updateImportantDate(id, input));
-  }
-
-  async deleteImportantDate(id: string) {
-    await this.runStateOperation(() => this.repository.deleteImportantDate(id));
-  }
-
-  async getImportantDateWidget() {
-    try {
-      return await this.repository.getImportantDateWidget();
-    } catch (error) {
-      throw new PairError(errorCode(error));
-    }
   }
 
   private async runStateOperation(operation: () => Promise<PairState>) {

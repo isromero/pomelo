@@ -4,11 +4,7 @@ import {
   type MomentDraftStore,
   type MomentRepository,
 } from '@/features/moment/application/moment-controller';
-import type {
-  DailyMoment,
-  Memory,
-  MemoryMapEntry,
-} from '@/features/moment/domain/moment';
+import type { DailyMoment, Memory } from '@/features/moment/domain/moment';
 
 const prompt = {
   conceptKey: 'small_gesture_smile',
@@ -95,7 +91,6 @@ class FakeMomentRepository implements MomentRepository {
   listener: (() => void) | null = null;
   moment = openMoment;
   history: Memory[] = [];
-  map: MemoryMapEntry[] = [];
   submitCalls = 0;
   revealCalls = 0;
   revealError: MomentError | null = null;
@@ -119,32 +114,6 @@ class FakeMomentRepository implements MomentRepository {
 
   async getHistory() {
     return this.history;
-  }
-
-  async getMemoryMap() {
-    return this.map;
-  }
-
-  async setMemoryLocation(memoryId: string, city: string) {
-    const current = this.history.find((item) => item.id === memoryId) ?? memory;
-    const next = {
-      ...current,
-      location: {
-        addedBy: 'user-1',
-        city,
-        countryCode: null,
-        updatedAt: '2026-08-16T10:03:00.000Z',
-      },
-    };
-    this.history = this.history.map((item) => (item.id === memoryId ? next : item));
-    return next;
-  }
-
-  async removeMemoryLocation(memoryId: string) {
-    const current = this.history.find((item) => item.id === memoryId) ?? memory;
-    const next = { ...current, location: null };
-    this.history = this.history.map((item) => (item.id === memoryId ? next : item));
-    return next;
   }
 
   async submitQuestion() {
@@ -314,34 +283,6 @@ describe('MomentController', () => {
       moment: null,
       status: 'ready',
     });
-  });
-
-  it('keeps ritual Memories out of Map even when legacy fixtures contain a location', async () => {
-    const repository = new FakeMomentRepository();
-    const locatedMemory = {
-      ...memory,
-      location: {
-        addedBy: 'user-1',
-        city: 'Barcelona',
-        countryCode: 'ES',
-        updatedAt: '2026-08-16T10:03:00.000Z',
-      },
-    };
-    repository.history = [locatedMemory];
-    repository.map = [
-      {
-        city: 'Barcelona',
-        countryCode: 'ES',
-        localDate: memory.localDate,
-        memoryId: memory.id,
-        revealedAt: memory.revealedAt,
-      },
-    ];
-    const controller = new MomentController(repository);
-
-    await controller.start();
-
-    expect(controller.getSnapshot().map).toEqual([]);
   });
 
   it('restores a private draft and marks it as needing synchronization', async () => {

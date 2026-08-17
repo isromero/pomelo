@@ -13,14 +13,12 @@ import {
   JournalError,
   type JournalRepository,
 } from '@/features/journal/application/journal-controller';
-import type { JournalEntry, JournalMedia } from '@/features/journal/domain/journal';
+import type { JournalEntry, JournalMedia, JournalPhotoDraft } from '@/features/journal/domain/journal';
 import {
   SupabaseJournalRepository,
-  type JournalPhotoDraft,
 } from '@/features/journal/infrastructure/supabase-journal-repository';
-import { ThreadController, ThreadError, type ThreadRepository } from '@/features/moment/application/thread-controller';
-import { useMoment } from '@/features/moment/moment-api';
-import { usePair } from '@/features/pair/presentation/pair-provider';
+import { ThreadController, ThreadError, type ThreadRepository, useMoment } from '@/features/moment/moment-api';
+import { usePair } from '@/features/pair/pair-api';
 import type { PomeloSupabaseClient } from '@/lib/supabase';
 import { useLocale } from '@/localization/locale-provider';
 
@@ -64,7 +62,7 @@ export function JournalProvider({
 }: PropsWithChildren<{ active: boolean; client: PomeloSupabaseClient | null }>) {
   const moment = useMoment();
   const pair = usePair();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   const repository = useMemo(
     () => client ? new SupabaseJournalRepository(client) : unavailableRepository,
     [client],
@@ -82,18 +80,18 @@ export function JournalProvider({
           date: state.anniversary,
           id: `anniversary-${state.id}`,
           kind: 'anniversary',
-          name: locale === 'es' ? 'Aniversario' : 'Anniversary',
+          name: t('journal.milestone.anniversary'),
         },
         ...state.members.flatMap((member) => member.birthDate ? [{
           date: member.birthDate,
           id: `birthday-${member.userId}`,
           kind: 'birthday' as const,
-          name: locale === 'es' ? `Cumpleaños de ${member.displayName}` : `${member.displayName}'s birthday`,
+          name: `${t('journal.milestone.birthday')} ${member.displayName}`,
         }] : []),
       ],
       today: localDate(state.timeZone),
     });
-  }, [controller, locale, moment.history, pair.state]);
+  }, [controller, moment.history, pair.state, t]);
 
   useEffect(() => {
     if (!active) {

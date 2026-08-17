@@ -10,12 +10,11 @@ import { AppHeader } from '@/components/pomelo/app-header';
 import { BottomNavigation } from '@/components/pomelo/bottom-navigation';
 import { fonts, type SemanticColors } from '@/constants/pomelo-theme';
 import { useAccount } from '@/features/account/presentation/account-provider';
-import type { JournalEntry, JournalHistoryItem, JournalMedia, UpcomingOccurrence } from '@/features/journal/domain/journal';
+import type { JournalEntry, JournalHistoryItem, JournalMedia, JournalProjection, UpcomingOccurrence } from '@/features/journal/domain/journal';
 import { JournalEditor } from '@/features/journal/presentation/journal-editor';
 import { JournalMap } from '@/features/journal/presentation/journal-map';
 import { useJournal } from '@/features/journal/presentation/journal-provider';
-import { useMoment } from '@/features/moment/moment-api';
-import { ThreadPanel } from '@/features/moment/presentation/thread-panel';
+import { ThreadPanel, useMoment } from '@/features/moment/moment-api';
 import { useLocale } from '@/localization/locale-provider';
 
 type DiaryView = 'history' | 'calendar' | 'map';
@@ -41,7 +40,7 @@ function PrivateImage({ media, repository }: { media: JournalMedia; repository: 
 export function DiaryScreen() {
   const params = useLocalSearchParams<{ entryId?: string; view?: string }>();
   const { colors } = useAppearance();
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const { profile, user } = useAccount();
   const moment = useMoment();
   const journal = useJournal();
@@ -52,14 +51,14 @@ export function DiaryScreen() {
   const [editing, setEditing] = useState<JournalEntry | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(params.entryId ?? null);
   const selected = journal.entries.find((candidate) => candidate.id === selectedId) ?? null;
-  const copy = locale === 'es' ? {
-    calendar: 'Calendario', empty: 'Vuestros momentos aparecerán aquí.', history: 'Historia', map: 'Mapa', memory: 'Momento de Pom',
-    next: 'Próximos planes e hitos', title: 'Nuestro diario', subtitle: 'Todo lo que habéis vivido y lo que aún os espera.',
-    lived: 'Vivido', upcoming: 'Por vivir', edit: 'Editar', by: 'Añadido por', close: 'Cerrar',
-  } : {
-    calendar: 'Calendar', empty: 'Your moments will appear here.', history: 'History', map: 'Map', memory: 'Pom Moment',
-    next: 'Upcoming plans and milestones', title: 'Our journal', subtitle: 'Everything you have lived and everything still ahead.',
-    lived: 'Lived', upcoming: 'Still to live', edit: 'Edit', by: 'Added by', close: 'Close',
+  const editingEntry = editing
+    ? journal.entries.find((candidate) => candidate.id === editing.id) ?? editing
+    : null;
+  const copy = {
+    by: t('journal.by'), calendar: t('journal.calendar'), close: t('common.close'), edit: t('journal.edit'),
+    empty: t('journal.empty'), history: t('journal.history'), lived: t('journal.lived'), map: t('journal.map'),
+    memory: t('journal.memory'), next: t('journal.next'), partner: t('journal.partner'), subtitle: t('journal.subtitle'),
+    title: t('journal.title'), upcoming: t('journal.upcoming'), you: t('journal.you'),
   };
 
   const openEntry = (id: string) => {
@@ -96,12 +95,12 @@ export function DiaryScreen() {
           <HistoryView copy={copy} entries={journal.entries} items={journal.projection.history} locale={locale} memories={moment.history} onOpenEntry={openEntry} upcoming={journal.projection.upcoming} />
         ) : null}
         {view === 'calendar' ? (
-          <CalendarView entries={journal.entries} locale={locale} memories={moment.history} onOpenEntry={openEntry} upcoming={journal.projection.upcoming} />
+          <CalendarView calendar={journal.projection.calendar} entries={journal.entries} locale={locale} memories={moment.history} onOpenEntry={openEntry} />
         ) : null}
         {view === 'map' ? <ScrollView contentContainerStyle={styles.mapContent}><JournalMap entries={journal.projection.map} onOpen={openEntry} /></ScrollView> : null}
         <BottomNavigation activeTab="diary" />
       </View>
-      {editorVisible ? <JournalEditor entry={editing} onClose={() => { setEditorVisible(false); setEditing(null); }} visible /> : null}
+      {editorVisible ? <JournalEditor entry={editingEntry} onClose={() => { setEditorVisible(false); setEditing(null); }} visible /> : null}
       <Modal animationType="slide" onRequestClose={() => setSelectedId(null)} presentationStyle="pageSheet" visible={selected !== null}>
         {selected ? (
           <SafeAreaView style={styles.detailScreen}>
@@ -115,8 +114,8 @@ export function DiaryScreen() {
               {selected.body ? <Text style={styles.detailBody}>{selected.body}</Text> : null}
               {selected.location ? <View style={styles.place}><Ionicons color={colors.actionDeep} name="location" size={18} /><Text style={styles.placeText}>{selected.location.label}</Text></View> : null}
               {selected.media.length ? <ScrollView horizontal contentContainerStyle={styles.detailPhotos}>{selected.media.map((media) => <PrivateImage key={media.id} media={media} repository={journal.media} />)}</ScrollView> : null}
-              <Text style={styles.author}>{copy.by} {selected.createdBy === user?.id ? (locale === 'es' ? 'ti' : 'you') : (locale === 'es' ? 'tu pareja' : 'your partner')}</Text>
-              {user ? <ThreadPanel controller={journal.threadController} memoryId={selected.id} ownUserId={user.id} /> : null}
+              <Text style={styles.author}>{copy.by} {selected.createdBy === user?.id ? copy.you : copy.partner}</Text>
+              {user ? <ThreadPanel controller={journal.threadController} ownUserId={user.id} targetId={selected.id} /> : null}
             </ScrollView>
           </SafeAreaView>
         ) : null}
@@ -179,19 +178,25 @@ function monthDays(month: string) {
   return [...Array(firstWeekday).fill(null), ...Array.from({ length: count }, (_, index) => `${year}-${String(monthNumber).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`)];
 }
 
-function CalendarView({ entries, locale, memories, onOpenEntry, upcoming }: {
-  entries: JournalEntry[]; locale: 'es' | 'en'; memories: ReturnType<typeof useMoment>['history']; onOpenEntry(id: string): void; upcoming: UpcomingOccurrence[];
+function CalendarView({ calendar, entries, locale, memories, onOpenEntry }: {
+  calendar: JournalProjection['calendar']; entries: JournalEntry[]; locale: 'es' | 'en'; memories: ReturnType<typeof useMoment>['history']; onOpenEntry(id: string): void;
 }) {
   const { colors } = useAppearance();
   const styles = createStyles(colors);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const days = monthDays(month);
-  const items = useMemo(() => [
-    ...memories.map((memory) => ({ date: memory.localDate, id: memory.id, kind: 'memory' as const, title: memory.prompt.text })),
-    ...entries.map((entry) => ({ date: entry.startDate, id: entry.id, kind: 'entry' as const, title: entry.title })),
-    ...upcoming.filter((item) => item.kind === 'milestone').map((item) => ({ date: item.startDate, id: item.id, kind: 'milestone' as const, title: item.name })),
-  ], [entries, memories, upcoming]);
+  const items = useMemo(() => {
+    const unique = new Map<string, { date: string; id: string; kind: 'entry' | 'memory' | 'milestone'; title: string }>();
+    for (const item of calendar) {
+      const date = 'date' in item ? item.date : item.startDate;
+      const entry = item.kind === 'entry' ? entries.find((candidate) => candidate.id === item.id) : null;
+      const memory = item.kind === 'memory' ? memories.find((candidate) => candidate.id === item.id) : null;
+      const title = item.kind === 'milestone' ? item.name : entry?.title ?? memory?.prompt.text;
+      if (title) unique.set(`${item.kind}:${item.id}:${date}`, { date, id: item.id, kind: item.kind, title });
+    }
+    return [...unique.values()];
+  }, [calendar, entries, memories]);
   const selectedItems = selectedDate ? items.filter((item) => item.date === selectedDate) : [];
   const move = (offset: number) => {
     const [year, monthNumber] = month.split('-').map(Number);
@@ -199,7 +204,8 @@ function CalendarView({ entries, locale, memories, onOpenEntry, upcoming }: {
     setMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`);
     setSelectedDate(null);
   };
-  const weekday = locale === 'es' ? ['L', 'M', 'X', 'J', 'V', 'S', 'D'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const weekday = Array.from({ length: 7 }, (_, index) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
+    .format(new Date(2024, 0, index + 1)));
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.calendarCard}>

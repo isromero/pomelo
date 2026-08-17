@@ -13,19 +13,17 @@ const fallbackRegion: Region = { latitude: 40.4168, longitude: -3.7038, latitude
 
 export function LocationPicker({ onChange, value }: { onChange(value: JournalLocation | null): void; value: JournalLocation | null }) {
   const { colors } = useAppearance();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   const styles = createStyles(colors);
   const [open, setOpen] = useState(false);
   const [region, setRegion] = useState<Region>(value ? { ...value, latitudeDelta: 0.04, longitudeDelta: 0.04 } : fallbackRegion);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const copy = locale === 'es' ? {
-    add: 'Añadir ubicación', cancel: 'Cancelar', confirm: 'Guardar este lugar', denied: 'Sin permiso: puedes buscar o mover el pin manualmente.',
-    failure: 'No hemos podido reconocer el lugar. Mueve el pin o prueba otra búsqueda.', remove: 'Quitar ubicación', search: 'Buscar ciudad o lugar', title: '¿Dónde ocurrió?',
-  } : {
-    add: 'Add location', cancel: 'Cancel', confirm: 'Save this place', denied: 'Without permission: search or move the pin manually.',
-    failure: 'We could not identify this place. Move the pin or try another search.', remove: 'Remove location', search: 'Search city or place', title: 'Where did it happen?',
+  const copy = {
+    add: t('journal.location.add'), cancel: t('common.cancel'), confirm: t('journal.location.confirm'),
+    denied: t('journal.location.denied'), failure: t('journal.location.failure'), remove: t('journal.location.remove'),
+    search: t('journal.location.search'), title: t('journal.location.title'),
   };
 
   const recenter = async () => {
@@ -71,21 +69,22 @@ export function LocationPicker({ onChange, value }: { onChange(value: JournalLoc
   const confirm = async () => {
     setBusy(true);
     setMessage(null);
+    let place: Location.LocationGeocodedAddress | undefined;
     try {
       const results = await Location.reverseGeocodeAsync({ latitude: region.latitude, longitude: region.longitude });
-      const place = results[0];
-      const city = place?.city ?? place?.subregion ?? place?.region ?? null;
-      const countryCode = place?.isoCountryCode?.toUpperCase() ?? null;
-      const label = [place?.name && place.name !== city ? place.name : null, city, place?.country]
-        .filter(Boolean).join(', ');
-      if (!label) throw new Error('not-found');
-      onChange({ city, countryCode, label, latitude: region.latitude, longitude: region.longitude });
-      setOpen(false);
+      place = results[0];
     } catch {
-      setMessage(copy.failure);
-    } finally {
-      setBusy(false);
+      place = undefined;
     }
+    const city = place?.city ?? place?.subregion ?? place?.region ?? null;
+    const countryCode = place?.isoCountryCode?.toUpperCase() ?? null;
+    const geocodedLabel = [place?.name && place.name !== city ? place.name : null, city, place?.country]
+      .filter(Boolean).join(', ');
+    const label = geocodedLabel || query.trim()
+      || `${region.latitude.toFixed(5)}, ${region.longitude.toFixed(5)}`;
+    onChange({ city, countryCode, label, latitude: region.latitude, longitude: region.longitude });
+    setOpen(false);
+    setBusy(false);
   };
 
   if (!open) {

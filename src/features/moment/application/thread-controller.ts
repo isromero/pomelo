@@ -22,9 +22,9 @@ export class ThreadError extends Error {
 }
 
 export interface ThreadRepository {
-  getThread(memoryId: string): Promise<ThreadState>;
-  sendThreadMessage(memoryId: string, body: string, clientMessageId: string): Promise<ThreadMessage>;
-  subscribeToThread(memoryId: string, listener: () => void): () => void;
+  getThread(targetId: string): Promise<ThreadState>;
+  sendThreadMessage(targetId: string, body: string, clientMessageId: string): Promise<ThreadMessage>;
+  subscribeToThread(targetId: string, listener: () => void): () => void;
 }
 
 export type ThreadControllerStatus = 'error' | 'idle' | 'loading' | 'ready';
@@ -38,7 +38,7 @@ export type ThreadSnapshot = {
   busy: boolean;
   canWrite: boolean;
   error: ThreadErrorCode | null;
-  memoryId: string | null;
+  targetId: string | null;
   messages: ThreadMessage[];
   pending: PendingThreadMessage | null;
   status: ThreadControllerStatus;
@@ -48,7 +48,7 @@ const initialSnapshot: ThreadSnapshot = {
   busy: false,
   canWrite: false,
   error: null,
-  memoryId: null,
+  targetId: null,
   messages: [],
   pending: null,
   status: 'idle',
@@ -84,22 +84,22 @@ export class ThreadController {
     return () => this.listeners.delete(listener);
   };
 
-  open(memoryId: string) {
-    if (this.snapshot.memoryId === memoryId && this.snapshot.status !== 'idle') {
+  open(targetId: string) {
+    if (this.snapshot.targetId === targetId && this.snapshot.status !== 'idle') {
       return;
     }
     this.operation += 1;
     this.unsubscribeRepository?.();
     this.snapshot = {
       ...initialSnapshot,
-      memoryId,
+      targetId,
       status: 'loading',
     };
     this.emit();
-    this.unsubscribeRepository = this.repository.subscribeToThread(memoryId, () => {
-      void this.refresh(memoryId);
+    this.unsubscribeRepository = this.repository.subscribeToThread(targetId, () => {
+      void this.refresh(targetId);
     });
-    void this.refresh(memoryId);
+    void this.refresh(targetId);
   }
 
   close() {
@@ -110,14 +110,14 @@ export class ThreadController {
     this.emit();
   }
 
-  async refresh(memoryId = this.snapshot.memoryId) {
-    if (!memoryId) {
+  async refresh(targetId = this.snapshot.targetId) {
+    if (!targetId) {
       return;
     }
     const operation = this.operation;
     try {
-      const thread = await this.repository.getThread(memoryId);
-      if (operation !== this.operation || this.snapshot.memoryId !== memoryId) {
+      const thread = await this.repository.getThread(targetId);
+      if (operation !== this.operation || this.snapshot.targetId !== targetId) {
         return;
       }
       this.update({
@@ -127,15 +127,15 @@ export class ThreadController {
         status: 'ready',
       });
     } catch (error) {
-      if (operation === this.operation && this.snapshot.memoryId === memoryId) {
+      if (operation === this.operation && this.snapshot.targetId === targetId) {
         this.update({ error: errorCode(error), status: 'error' });
       }
     }
   }
 
   async send(body: string) {
-    const memoryId = this.snapshot.memoryId;
-    if (!memoryId) {
+    const targetId = this.snapshot.targetId;
+    if (!targetId) {
       this.update({ error: 'memoryNotFound' });
       return;
     }
@@ -156,11 +156,11 @@ export class ThreadController {
     this.update({ busy: true, error: null, pending });
     try {
       const message = await this.repository.sendThreadMessage(
-        memoryId,
+        targetId,
         pending.body,
         pending.clientMessageId,
       );
-      if (operation !== this.operation || this.snapshot.memoryId !== memoryId) {
+      if (operation !== this.operation || this.snapshot.targetId !== targetId) {
         return;
       }
       const messages = this.snapshot.messages.some((item) => item.id === message.id)
@@ -168,7 +168,7 @@ export class ThreadController {
         : [...this.snapshot.messages, message];
       this.update({ busy: false, error: null, messages, pending: null });
     } catch (error) {
-      if (operation === this.operation && this.snapshot.memoryId === memoryId) {
+      if (operation === this.operation && this.snapshot.targetId === targetId) {
         this.update({ busy: false, error: errorCode(error), pending });
       }
     }

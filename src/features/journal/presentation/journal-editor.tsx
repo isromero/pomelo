@@ -20,8 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppearance } from '@/appearance/appearance-provider';
 import { fonts, type SemanticColors } from '@/constants/pomelo-theme';
-import type { JournalEntry, JournalEntryInput, JournalLocation, JournalMedia } from '@/features/journal/domain/journal';
-import type { JournalPhotoDraft } from '@/features/journal/infrastructure/supabase-journal-repository';
+import type { JournalEntry, JournalEntryInput, JournalLocation, JournalMedia, JournalPhotoDraft } from '@/features/journal/domain/journal';
 import { useJournal } from '@/features/journal/presentation/journal-provider';
 import { LocationPicker } from '@/features/journal/presentation/location-picker';
 import { useLocale } from '@/localization/locale-provider';
@@ -55,7 +54,7 @@ function PrivatePhoto({ media, onRemove }: { media: JournalMedia; onRemove(): vo
 
 export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry | null; onClose(): void; visible: boolean }) {
   const { colors } = useAppearance();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   const { access, busy, controller, error, media: repository } = useJournal();
   const dynamic = createStyles(colors);
   const [title, setTitle] = useState(entry?.title ?? '');
@@ -68,19 +67,15 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
   const [location, setLocation] = useState<JournalLocation | null>(entry?.location ?? null);
   const [drafts, setDrafts] = useState<JournalPhotoDraft[]>([]);
   const [savingMedia, setSavingMedia] = useState(false);
+  const [expectedVersion] = useState(entry?.version ?? null);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const copy = locale === 'es' ? {
-    body: 'Descripción (opcional)', cancel: 'Cancelar', date: 'Fecha', delete: 'Eliminar entrada', end: 'Fecha de fin (opcional)',
-    photos: 'Fotos privadas', premium: 'La creación gratuita ya se usó. Premium permite añadir más entradas.', repeat: 'Repetir cada año',
-    save: 'Guardar', savedPartial: 'La entrada se guardó, pero alguna foto no pudo subirse.', time: 'Hora (opcional)', title: 'Título',
-    widget: 'Ocultar del widget', confirmDelete: 'Esta entrada y sus fotos se eliminarán para los dos.', newTitle: 'Nuevo momento', editTitle: 'Editar momento',
-    readOnly: 'La pareja está archivada. Puedes consultar o eliminar esta entrada, pero no editarla.', failed: 'No se ha podido guardar. Revisa los datos o vuelve a intentarlo.',
-  } : {
-    body: 'Description (optional)', cancel: 'Cancel', date: 'Date', delete: 'Delete entry', end: 'End date (optional)',
-    photos: 'Private photos', premium: 'The free creation has been used. Premium lets you add more entries.', repeat: 'Repeat yearly',
-    save: 'Save', savedPartial: 'The entry was saved, but one or more photos failed to upload.', time: 'Time (optional)', title: 'Title',
-    widget: 'Hide from widget', confirmDelete: 'This entry and its photos will be removed for both of you.', newTitle: 'New moment', editTitle: 'Edit moment',
-    readOnly: 'This Pair is archived. You can view or delete this entry, but you cannot edit it.', failed: 'The entry could not be saved. Check the details or try again.',
+  const copy = {
+    body: t('journal.editor.body'), cancel: t('common.cancel'), confirmDelete: t('journal.editor.confirmDelete'),
+    date: t('journal.editor.date'), delete: t('journal.editor.delete'), editTitle: t('journal.editor.edit'),
+    end: t('journal.editor.end'), failed: t('journal.editor.failed'), newTitle: t('journal.editor.new'),
+    photos: t('journal.editor.photos'), premium: t('journal.editor.premium'), readOnly: t('journal.editor.readOnly'),
+    repeat: t('journal.editor.repeat'), save: t('journal.editor.save'), savedPartial: t('journal.editor.partial'),
+    time: t('journal.editor.time'), title: t('journal.editor.title'), widget: t('journal.editor.widget'),
   };
 
   const selectPhotos = async () => {
@@ -115,13 +110,15 @@ export function JournalEditor({ entry, onClose, visible }: { entry: JournalEntry
 
   const save = async () => {
     const saved = entry
-      ? await controller.updateEntry(entry.id, entry.version, input)
+      ? await controller.updateEntry(entry.id, expectedVersion ?? entry.version, input)
       : await controller.createEntry(input);
     if (!saved) return;
     if (drafts.length) {
       setSavingMedia(true);
-      const startPosition = saved.media.length;
-      const uploads = await Promise.allSettled(drafts.map((draft, index) => repository.addPhoto(saved, draft, startPosition + index, mediaId())));
+      const usedPositions = new Set(saved.media.map((media) => media.position));
+      const availablePositions = Array.from({ length: 10 }, (_, position) => position)
+        .filter((position) => !usedPositions.has(position));
+      const uploads = await Promise.allSettled(drafts.map((draft, index) => repository.addPhoto(saved, draft, availablePositions[index], mediaId())));
       setSavingMedia(false);
       await controller.refresh();
       if (uploads.some((result) => result.status === 'rejected')) Alert.alert(copy.savedPartial);

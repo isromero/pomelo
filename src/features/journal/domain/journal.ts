@@ -19,6 +19,12 @@ export type JournalMedia = {
   width: number;
 };
 
+export type JournalPhotoDraft = {
+  height: number;
+  uri: string;
+  width: number;
+};
+
 export type JournalEntry = {
   body: string | null;
   createdAt: string;
@@ -251,14 +257,22 @@ export function projectJournal({
 
   const map = entries
     .filter((entry): entry is JournalEntry & { location: JournalLocation } => entry.location !== null)
-    .map((entry) => ({
-      endDate: entry.endDate ?? entry.startDate,
-      id: entry.id,
-      location: entry.location,
-      startDate: entry.startDate,
-      state: journalEntryState(entry, today),
-      title: entry.title,
-    }))
+    .flatMap((entry) => {
+      const occurrence = entry.recurrence === 'yearly'
+        ? nextJournalOccurrence(entry, today)
+        : { endDate: entry.endDate ?? entry.startDate, startDate: entry.startDate };
+      if (!occurrence) return [];
+      const state = today < occurrence.startDate
+        ? 'upcoming' as const
+        : today <= occurrence.endDate ? 'ongoing' as const : 'lived' as const;
+      return [{
+        ...occurrence,
+        id: entry.id,
+        location: entry.location,
+        state,
+        title: entry.title,
+      }];
+    })
     .sort((left, right) => left.startDate.localeCompare(right.startDate) || left.id.localeCompare(right.id));
 
   return {

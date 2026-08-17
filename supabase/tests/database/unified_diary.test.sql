@@ -1,6 +1,6 @@
 begin;
 
-select plan(30);
+select plan(34);
 
 select has_table('public', 'journal_entries', 'Journal Entries exist');
 select has_table('public', 'pair_journal_state', 'Pair journal allowance state exists');
@@ -133,6 +133,29 @@ insert into diary_results values (
 );
 select is(jsonb_array_length((select payload -> 'messages' from diary_results where label = 'thread')), 1, 'the Journal Thread is readable');
 
+do $$
+begin
+  for position in 0..9 loop
+    perform public.add_journal_entry_media(
+      ((select payload ->> 'id' from diary_results where label = 'created'))::uuid,
+      'media-' || position,
+      (select payload ->> 'pairId' from diary_results where label = 'created') || '/'
+        || (select payload ->> 'id' from diary_results where label = 'created') || '/90000000-0000-4000-8000-000000000001/media-'
+        || position || '.jpg',
+      position, 100, 100
+    );
+  end loop;
+end;
+$$;
+insert into diary_results values (
+  'media-overflow',
+  public.add_journal_entry_media(
+    ((select payload ->> 'id' from diary_results where label = 'created'))::uuid,
+    'media-10', 'overflow.jpg', 9, 100, 100
+  )
+);
+select is((select payload ->> 'error' from diary_results where label = 'media-overflow'), 'invalid_media', 'an entry cannot exceed ten photos');
+
 select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000003', true);
 insert into diary_results values ('outsider-list', public.get_journal_entries());
 select is((select payload ->> 'error' from diary_results where label = 'outsider-list'), 'not_allowed', 'an outsider cannot list the Pair Diary');
@@ -141,13 +164,31 @@ insert into diary_results values (
   public.get_journal_thread(((select payload ->> 'id' from diary_results where label = 'created'))::uuid)
 );
 select is((select payload ->> 'error' from diary_results where label = 'outsider-thread'), 'not_allowed', 'an outsider cannot read the Journal Thread');
+select is((select count(*)::integer from public.journal_entries), 0, 'RLS hides exact Journal coordinates from an outsider');
 
 reset role;
 select is((select count(*)::integer from public.memories), 0, 'Journal Entries do not create Memories');
 select is((select coalesce(sum(memory_count), 0)::integer from public.pair_progress), 0, 'Journal Entries do not advance Pom Progress');
+update public.pairs
+set status = 'archived', dissolved_at = now()
+where id = ((select payload ->> 'pairId' from diary_results where label = 'created'))::uuid;
+update public.pair_memberships
+set ended_at = now()
+where pair_id = ((select payload ->> 'pairId' from diary_results where label = 'created'))::uuid;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000002', true);
+insert into diary_results values ('archived-list', public.get_journal_entries());
+select is((select payload ->> 'readOnly' from diary_results where label = 'archived-list'), 'true', 'an archived Pair keeps its Diary readable');
+insert into diary_results values (
+  'archived-update',
+  public.update_journal_entry(
+    ((select payload ->> 'id' from diary_results where label = 'created'))::uuid,
+    2, 'No debe cambiar', '', date '2026-08-10', null, null, 'Europe/Madrid',
+    'once', false, null
+  )
+);
+select is((select payload ->> 'error' from diary_results where label = 'archived-update'), 'not_allowed', 'an archived Pair rejects content edits');
 insert into diary_results values (
   'deleted',
   public.delete_journal_entry(((select payload ->> 'id' from diary_results where label = 'created'))::uuid)

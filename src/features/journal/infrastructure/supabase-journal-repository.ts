@@ -10,18 +10,12 @@ import type {
   JournalEntryInput,
   JournalLocation,
   JournalMedia,
+  JournalPhotoDraft,
 } from '@/features/journal/domain/journal';
-import { ThreadError, type ThreadRepository } from '@/features/moment/application/thread-controller';
-import type { ThreadMessage, ThreadState } from '@/features/moment/domain/thread';
+import { ThreadError, type ThreadMessage, type ThreadRepository, type ThreadState } from '@/features/moment/moment-api';
 import type { PomeloSupabaseClient } from '@/lib/supabase';
 
 type JsonObject = Record<string, unknown>;
-
-export type JournalPhotoDraft = {
-  height: number;
-  uri: string;
-  width: number;
-};
 
 export const JOURNAL_MEDIA_BUCKET = 'journal-media';
 
@@ -150,23 +144,51 @@ export class SupabaseJournalRepository implements JournalRepository, ThreadRepos
   constructor(private readonly client: PomeloSupabaseClient) {}
 
   async getEntries() {
-    const { data, error } = await this.client.rpc('get_journal_entries');
-    const transport = transportFailure(error);
+    const accessResult = await this.client.rpc('get_journal_access');
+    const transport = transportFailure(accessResult.error);
     if (transport) throw transport;
-    const application = journalFailure(data);
+    const application = journalFailure(accessResult.data);
     if (application) throw application;
-    if (!isObject(data) || !Array.isArray(data.entries)
-      || typeof data.canCreate !== 'boolean' || typeof data.freeEntryConsumed !== 'boolean'
-      || typeof data.isPremium !== 'boolean' || typeof data.readOnly !== 'boolean') {
+    const access = accessResult.data;
+    if (!isObject(access) || typeof access.canCreate !== 'boolean' || typeof access.freeEntryConsumed !== 'boolean'
+      || typeof access.isPremium !== 'boolean' || typeof access.readOnly !== 'boolean') {
       throw new JournalError('unexpected');
     }
     this.access = {
-      canCreate: data.canCreate,
-      freeEntryConsumed: data.freeEntryConsumed,
-      isPremium: data.isPremium,
-      readOnly: data.readOnly,
+      canCreate: access.canCreate,
+      freeEntryConsumed: access.freeEntryConsumed,
+      isPremium: access.isPremium,
+      readOnly: access.readOnly,
     };
-    return data.entries.map(parseEntry);
+
+    const entries: JournalEntry[] = [];
+    let cursor: { date: string; id: string; origin: string } | null = null;
+    do {
+      const pageResult: { data: unknown; error: { message?: string } | null } = await this.client.rpc('get_journal_page', {
+        cursor_date: cursor?.date ?? undefined,
+        cursor_id: cursor?.id ?? undefined,
+        cursor_origin: cursor?.origin ?? undefined,
+        page_size: 100,
+      });
+      const pageTransport = transportFailure(pageResult.error);
+      if (pageTransport) throw pageTransport;
+      const pageFailure = journalFailure(pageResult.data);
+      if (pageFailure) throw pageFailure;
+      if (!isObject(pageResult.data) || !Array.isArray(pageResult.data.items)) throw new JournalError('unexpected');
+      for (const item of pageResult.data.items) {
+        if (isObject(item) && item.kind === 'manualEntry') entries.push(parseEntry(item.item));
+      }
+      const next: unknown = pageResult.data.nextCursor;
+      if (next === null) {
+        cursor = null;
+      } else if (isObject(next) && typeof next.date === 'string'
+        && typeof next.id === 'string' && typeof next.origin === 'string') {
+        cursor = { date: next.date, id: next.id, origin: next.origin };
+      } else {
+        throw new JournalError('unexpected');
+      }
+    } while (cursor);
+    return entries;
   }
 
   async getAccess() {
@@ -259,7 +281,7 @@ export class SupabaseJournalRepository implements JournalRepository, ThreadRepos
     if (!isObject(data) || !Array.isArray(data.messages) || typeof data.canWrite !== 'boolean') {
       throw new ThreadError('unexpected');
     }
-    return { canWrite: data.canWrite, memoryId: entryId, messages: data.messages.map(parseThreadMessage) };
+    return { canWrite: data.canWrite, messages: data.messages.map(parseThreadMessage), targetId: entryId };
   }
 
   async sendThreadMessage(entryId: string, body: string, clientMessageId: string) {

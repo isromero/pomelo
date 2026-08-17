@@ -112,21 +112,6 @@ export type Contribution = {
   userId: string;
 };
 
-export type MemoryLocation = {
-  addedBy: string;
-  city: string;
-  countryCode: string | null;
-  updatedAt: string;
-};
-
-export type MemoryMapEntry = {
-  city: string;
-  countryCode: string | null;
-  localDate: string;
-  memoryId: string;
-  revealedAt: string;
-};
-
 export type MomentPartner = {
   avatarKey: 'affectionate' | 'calm' | 'surprised';
   contribution: Contribution | null;
@@ -156,7 +141,6 @@ export type Memory = {
   format?: MomentFormat;
   id: string;
   localDate: string;
-  location?: MemoryLocation | null;
   momentId: string;
   ownContribution: Contribution | null;
   pairId: string;

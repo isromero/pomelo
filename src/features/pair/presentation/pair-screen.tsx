@@ -23,14 +23,6 @@ import type {
   PairState,
 } from '@/features/pair/application/pair-controller';
 import {
-  getPairLocalDate,
-  getNextImportantDate,
-  validateImportantDate,
-  type ImportantDateInput,
-  type ImportantDateKind,
-  type ImportantDateValidationError,
-} from '@/features/pair/domain/important-date';
-import {
   invitationExpiryDelay,
   normalizeInvitationCredential,
   validateAnniversary,
@@ -48,22 +40,12 @@ const errorKeys: Record<PairErrorCode, TranslationKey> = {
   invitationExpired: 'pair.error.invitationExpired',
   invitationInvalid: 'pair.error.invitationInvalid',
   invitationUsed: 'pair.error.invitationUsed',
-  invalidImportantDate: 'pair.error.invalidImportantDate',
   invalidAnniversary: 'pair.error.invalidAnniversary',
-  importantDateNotFound: 'pair.error.importantDateNotFound',
   network: 'pair.error.network',
   notAllowed: 'pair.error.notAllowed',
   pairFull: 'pair.error.pairFull',
   profileIncomplete: 'pair.error.profileIncomplete',
   unexpected: 'pair.error.unexpected',
-};
-
-const importantDateValidationKeys: Record<ImportantDateValidationError, TranslationKey> = {
-  date: 'pair.error.invalidImportantDate.date',
-  future: 'pair.error.invalidImportantDate.future',
-  kind: 'pair.error.invalidImportantDate.kind',
-  name: 'pair.error.invalidImportantDate.name',
-  recurrence: 'pair.error.invalidImportantDate.recurrence',
 };
 
 function formatDate(value: string, locale: 'en' | 'es') {
@@ -481,261 +463,6 @@ function ActivePair({ error, state }: { error: PairErrorCode | null; state: Pair
   );
 }
 
-export function ImportantDatesPanel({ state }: { state: PairState }) {
-  const { colors } = useAppearance();
-  const { busy, controller, error } = usePair();
-  const { locale, t } = useLocale();
-  const styles = createStyles(colors);
-  const [clock, setClock] = useState(() => Date.now());
-  const now = new Date(clock);
-  const today = getPairLocalDate(now, state.timeZone);
-  const nextImportantDate = getNextImportantDate({
-    anniversary: state.anniversary,
-    dates: state.importantDates,
-    members: state.members,
-    now,
-    pairId: state.id,
-    timeZone: state.timeZone,
-  });
-  const [formVisible, setFormVisible] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [kind, setKind] = useState<ImportantDateKind>('trip');
-  const [name, setName] = useState('');
-  const [date, setDate] = useState('');
-  const [formError, setFormError] = useState<PairErrorCode | null>(null);
-  const [validationError, setValidationError] =
-    useState<ImportantDateValidationError | null>(null);
-  const [yearly, setYearly] = useState(false);
-
-  const editingStillExists =
-    !editingId || state.importantDates.some((importantDate) => importantDate.id === editingId);
-  const showForm = formVisible && editingStillExists;
-
-  useEffect(() => {
-    const timer = setInterval(() => setClock(Date.now()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const resetForm = () => {
-    setEditingId(null);
-    setFormVisible(false);
-    setKind('trip');
-    setName('');
-    setDate('');
-    setFormError(null);
-    setValidationError(null);
-    setYearly(false);
-  };
-
-  const submit = () => {
-    const input: ImportantDateInput = {
-      date,
-      kind,
-      name,
-      recurrence: yearly ? 'yearly' : 'once',
-    };
-    const nextValidationError = validateImportantDate(input, today);
-    if (nextValidationError) {
-      setFormError(null);
-      setValidationError(nextValidationError);
-      return;
-    }
-    setFormError(null);
-    setValidationError(null);
-    if (editingId) {
-      void controller.updateImportantDate(editingId, input);
-    } else {
-      void controller.createImportantDate(input);
-    }
-    resetForm();
-  };
-
-  const edit = (importantDate: ImportantDateInput & { id: string }) => {
-    setFormError(null);
-    setValidationError(null);
-    setEditingId(importantDate.id);
-    setFormVisible(true);
-    setKind(importantDate.kind);
-    setName(importantDate.name);
-    setDate(importantDate.date);
-    setYearly(importantDate.recurrence === 'yearly');
-  };
-
-  return (
-    <View style={styles.spaceSection}>
-      <View style={styles.spaceHeading}>
-        <View style={styles.spaceHeadingCopy}>
-          <Text style={styles.codeLabel}>{t('pair.space.eyebrow')}</Text>
-          <Text style={styles.spaceTitle}>{t('pair.space.title')}</Text>
-          <Text style={styles.body}>{t('pair.space.body')}</Text>
-        </View>
-        <Ionicons color={colors.action} name="calendar-outline" size={28} />
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.codeLabel}>{t('pair.space.members')}</Text>
-        {state.members.map((member) => (
-          <View key={member.userId} style={styles.dateMember}>
-            <Text style={styles.memberName}>{member.displayName}</Text>
-            <Text style={styles.meta}>
-              {member.birthDate
-                ? t('pair.space.birthDateValue')
-                    .replace('{name}', member.displayName)
-                    .replace('{date}', formatDate(member.birthDate, locale))
-                : t('pair.space.none')}
-            </Text>
-          </View>
-        ))}
-        <View style={styles.divider} />
-        <Text style={styles.codeLabel}>{t('pair.space.anniversary')}</Text>
-        <Text style={styles.anniversary}>{formatDate(state.anniversary, locale)}</Text>
-      </View>
-
-      <View style={styles.nextDateCard}>
-        <Text style={styles.codeLabel}>{t('pair.space.next')}</Text>
-        {nextImportantDate ? (
-          <>
-            <Text style={styles.nextDateName}>
-              {nextImportantDate.kind === 'anniversary'
-                ? t('pair.space.anniversary')
-                : nextImportantDate.kind === 'birthday'
-                  ? t('pair.space.nextBirthday').replace('{name}', nextImportantDate.name)
-                  : nextImportantDate.name}
-            </Text>
-            <Text style={styles.nextDateMeta}>
-              {(nextImportantDate.daysRemaining === 0
-                ? t('pair.space.nextDateToday')
-                : t('pair.space.nextDateIn').replace(
-                    '{count}',
-                    String(nextImportantDate.daysRemaining),
-                  )).replace('{date}', formatDate(nextImportantDate.date, locale))}
-            </Text>
-          </>
-        ) : (
-          <Text style={styles.meta}>{t('pair.space.none')}</Text>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.codeLabel}>{t('pair.space.importantDates')}</Text>
-        {state.importantDates.length === 0 && (
-          <Text style={styles.meta}>{t('pair.space.none')}</Text>
-        )}
-        {state.importantDates.map((importantDate) => (
-          <View key={importantDate.id} style={styles.importantDateRow}>
-            <View style={styles.importantDateCopy}>
-              <Text style={styles.dateName}>{importantDate.name}</Text>
-              <Text style={styles.meta}>
-                {(importantDate.recurrence === 'yearly'
-                  ? t('pair.space.dateYearly')
-                  : importantDate.date < today
-                    ? t('pair.space.datePast')
-                    : t('pair.space.dateOnce')
-                ).replace('{date}', formatDate(importantDate.date, locale))}
-              </Text>
-            </View>
-            <View style={styles.dateActions}>
-              <TextButton
-                disabled={busy}
-                label={t('pair.space.edit')}
-                onPress={() => edit(importantDate)}
-              />
-              <TextButton
-                disabled={busy}
-                label={t('pair.space.delete')}
-                onPress={() =>
-                  Alert.alert(t('pair.space.deleteTitle'), t('pair.space.deleteBody'), [
-                    { style: 'cancel', text: t('common.cancel') },
-                    {
-                      onPress: () => void controller.deleteImportantDate(importantDate.id),
-                      style: 'destructive',
-                      text: t('pair.space.delete'),
-                    },
-                  ])
-                }
-              />
-            </View>
-          </View>
-        ))}
-        {(!formVisible || !editingStillExists) && (
-          <SecondaryButton
-            icon="add"
-            label={t('pair.space.add')}
-            onPress={() => {
-              setEditingId(null);
-              setFormError(null);
-              setValidationError(null);
-              setFormVisible(true);
-            }}
-          />
-        )}
-        {showForm && (
-          <View style={styles.dateForm}>
-            <Text style={styles.label}>{t('pair.space.name')}</Text>
-            <TextInput
-              editable={!busy}
-              onChangeText={setName}
-              placeholder={t('pair.space.name')}
-              placeholderTextColor={colors.muted}
-              style={styles.input}
-              value={name}
-            />
-            <Text style={styles.label}>{t('pair.space.kind')}</Text>
-            <View style={styles.kindRow}>
-              {(['trip', 'custom'] as const).map((option) => (
-                <Pressable
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: kind === option }}
-                  key={option}
-                  onPress={() => setKind(option)}
-                  style={[styles.kindOption, kind === option && styles.kindOptionSelected]}>
-                  <Text style={styles.kindOptionText}>
-                    {t(option === 'trip' ? 'pair.space.trip' : 'pair.space.custom')}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.label}>{t('pair.space.date')}</Text>
-            <TextInput
-              editable={!busy}
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
-              onChangeText={setDate}
-              placeholder={t('pair.space.placeholder')}
-              placeholderTextColor={colors.muted}
-              style={styles.input}
-              value={date}
-            />
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: yearly }}
-              onPress={() => setYearly((current) => !current)}
-              style={styles.repeatToggle}>
-              <Ionicons
-                color={yearly ? colors.action : colors.muted}
-                name={yearly ? 'checkbox' : 'square-outline'}
-                size={20}
-              />
-              <Text style={styles.systemText}>{t('pair.space.repeat')}</Text>
-            </Pressable>
-            <PrimaryButton
-              busy={busy}
-              icon="checkmark"
-              label={t('pair.space.save')}
-              onPress={submit}
-            />
-            <TextButton disabled={busy} label={t('pair.space.cancel')} onPress={resetForm} />
-          </View>
-        )}
-      </View>
-      <ErrorBanner
-        error={validationError ? null : formError ?? error}
-        message={validationError ? t(importantDateValidationKeys[validationError]) : undefined}
-      />
-    </View>
-  );
-}
-
 function ArchivedPair({
   onCreatePair,
   state,
@@ -932,7 +659,6 @@ const createStyles = (colors: SemanticColors) =>
     memberName: { color: colors.ink, flex: 1, fontFamily: fonts.bodyBold, fontSize: 14 },
     divider: { backgroundColor: colors.borderSoft, height: StyleSheet.hairlineWidth },
     anniversary: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 20 },
-    spaceSection: { gap: 12 },
     spaceHeading: {
       alignItems: 'flex-start',
       backgroundColor: colors.rewardSoft,
@@ -944,20 +670,6 @@ const createStyles = (colors: SemanticColors) =>
     },
     spaceHeadingCopy: { flex: 1, gap: 7 },
     spaceTitle: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 22, lineHeight: 27 },
-    dateMember: { gap: 3 },
-    nextDateCard: { backgroundColor: colors.actionSoft, borderRadius: radii.lg, gap: 8, padding: 18 },
-    nextDateName: { color: colors.ink, fontFamily: fonts.displayBold, fontSize: 20, lineHeight: 25 },
-    nextDateMeta: { color: colors.actionDeep, fontFamily: fonts.bodySemiBold, fontSize: 12 },
-    importantDateRow: { alignItems: 'center', borderTopColor: colors.borderSoft, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 8, paddingTop: 11 },
-    importantDateCopy: { flex: 1, gap: 3 },
-    dateName: { color: colors.ink, fontFamily: fonts.bodyBold, fontSize: 13 },
-    dateActions: { alignItems: 'flex-end', gap: 0 },
-    dateForm: { borderTopColor: colors.borderSoft, borderTopWidth: StyleSheet.hairlineWidth, gap: 10, paddingTop: 14 },
-    kindRow: { flexDirection: 'row', gap: 8 },
-    kindOption: { alignItems: 'center', backgroundColor: colors.surfaceStrong, borderColor: colors.borderSoft, borderRadius: radii.full, borderWidth: 1, flex: 1, height: 42, justifyContent: 'center' },
-    kindOptionSelected: { backgroundColor: colors.actionSoft, borderColor: colors.action },
-    kindOptionText: { color: colors.inkSecondary, fontFamily: fonts.bodyBold, fontSize: 11 },
-    repeatToggle: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 4 },
     systemText: { color: colors.inkSecondary, flex: 1, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
     archiveCard: { alignItems: 'center', backgroundColor: colors.backgroundRaised, borderRadius: radii.lg, gap: 15, padding: 28 },
     archiveMembers: { flexDirection: 'row', gap: 8 },

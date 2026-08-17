@@ -8,7 +8,7 @@ export type ThreadMessage = {
 
 export type ThreadState = {
   canWrite: boolean;
-  memoryId: string;
+  targetId: string;
   messages: ThreadMessage[];
 };
 

@@ -64,7 +64,6 @@ export type MomentSnapshot = {
   draft: QuestionResponse | null;
   error: MomentErrorCode | null;
   history: Memory[];
-  map: never[];
   moment: DailyMoment | null;
   photoDraft: PhotoDraft | null;
   syncPending: boolean;
@@ -88,7 +87,6 @@ const initialSnapshot: MomentSnapshot = {
   draft: null,
   error: null,
   history: [],
-  map: [],
   moment: null,
   photoDraft: null,
   syncPending: false,
@@ -182,7 +180,6 @@ export class MomentController {
         draft,
         error: null,
         history: historyResult.value,
-        map: [],
         moment: momentResult.value,
         photoDraft,
         syncPending: draft !== null || photoDraft !== null,
@@ -197,7 +194,6 @@ export class MomentController {
         draft: null,
         error: dailyError,
         history: historyResult.value,
-        map: [],
         moment: null,
         photoDraft: null,
         syncPending: false,
@@ -209,7 +205,6 @@ export class MomentController {
     this.update({
       error: dailyError,
       history: historyResult.value,
-      map: [],
       status: recovering || this.snapshot.status === 'loading' ? 'error' : 'ready',
     });
   }
@@ -398,7 +393,6 @@ export class MomentController {
     this.update({
       error: null,
       history,
-      map: [],
     });
   }
 

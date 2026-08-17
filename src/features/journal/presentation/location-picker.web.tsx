@@ -8,12 +8,12 @@ import { useLocale } from '@/localization/locale-provider';
 
 export function LocationPicker({ value }: { onChange(value: JournalLocation | null): void; value: JournalLocation | null }) {
   const { colors } = useAppearance();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   return (
     <View style={[styles.card, { backgroundColor: colors.informativeSoft }]}>
       <Ionicons color={colors.inkSecondary} name="phone-portrait-outline" size={20} />
       <Text style={[styles.text, { color: colors.inkSecondary }]}>
-        {value?.label ?? (locale === 'es' ? 'Añade una ubicación desde la app móvil.' : 'Add a location from the mobile app.')}
+        {value?.label ?? t('journal.location.mobile')}
       </Text>
     </View>
   );

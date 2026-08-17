@@ -369,7 +369,6 @@ function parseMemory(value: unknown): Memory {
     id,
     localDate,
     momentId,
-    location: null,
     ownContribution,
     pairId,
     partner: parsePartner(value.partner),
@@ -468,7 +467,7 @@ export class SupabaseMomentRepository implements MomentRepository, ThreadReposit
     }
     return {
       canWrite: data.canWrite,
-      memoryId,
+      targetId: memoryId,
       messages: data.messages.map(parseThreadMessage),
     };
   }

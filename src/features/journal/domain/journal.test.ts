@@ -152,4 +152,20 @@ describe('Journal Entry dates', () => {
       { endDate: '2026-08-21', id: visible.id, kind: 'entry', name: visible.title, startDate: '2026-08-21' },
     ])?.id).toBe(visible.id);
   });
+
+  it('projects a recurring map pin using its current annual occurrence', () => {
+    const recurring = {
+      ...entry,
+      endDate: null,
+      location: { city: null, countryCode: null, label: 'Un pin', latitude: 40, longitude: -3 },
+      recurrence: 'yearly' as const,
+      startDate: '2024-09-01',
+    };
+
+    expect(projectJournal({ entries: [recurring], memories: [], milestones: [], today: '2026-08-17' }).map[0]).toMatchObject({
+      id: recurring.id,
+      startDate: '2026-09-01',
+      state: 'upcoming',
+    });
+  });
 });
