@@ -1,6 +1,6 @@
 begin;
 
-select plan(44);
+select plan(51);
 
 select has_table('public', 'doodle_documents', 'Doodle documents exist');
 select has_table('public', 'doodle_completions', 'Doodle completions exist');
@@ -137,6 +137,43 @@ select is(
   'the submitting User receives private Photo metadata'
 );
 
+update storage.objects
+set metadata = '{"tampered":true}'::jsonb
+where bucket_id = 'pomelo-moment-media'
+  and name = '60000000-0000-4000-8000-000000000001/'
+    || (select photo_moment_id from feature_ids)::text
+    || '/rear.jpg';
+select set_config('storage.allow_delete_query', 'true', true);
+delete from storage.objects
+where bucket_id = 'pomelo-moment-media'
+  and name = '60000000-0000-4000-8000-000000000001/'
+    || (select photo_moment_id from feature_ids)::text
+    || '/front.jpg';
+reset role;
+select is(
+  (
+    select metadata ->> 'tampered'
+    from storage.objects
+    where bucket_id = 'pomelo-moment-media'
+      and name = '60000000-0000-4000-8000-000000000001/'
+        || (select photo_moment_id from feature_ids)::text
+        || '/rear.jpg'
+  ),
+  null,
+  'submitted Photo media cannot be overwritten'
+);
+select is(
+  (
+    select count(*)::integer
+    from storage.objects
+    where bucket_id = 'pomelo-moment-media'
+      and name like '60000000-0000-4000-8000-000000000001/%'
+  ),
+  2,
+  'submitted Photo media cannot be deleted'
+);
+
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002', true);
 select is(
   (
@@ -308,6 +345,49 @@ select is(
   1,
   'a Doodle gesture persists as one grouped snapshot'
 );
+
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002', true);
+insert into feature_test_results values (
+  'doodle-spoof',
+  public.save_doodle_snapshot(
+    (select doodle_moment_id from feature_ids),
+    '{"version":2,"strokes":[{"id":"stroke-one","userId":"60000000-0000-4000-8000-000000000001","color":"#F4714B","width":5,"mode":"brush","createdAt":"2026-08-16T10:00:00.000Z","points":[{"x":1,"y":1}]},{"id":"spoofed-stroke","userId":"60000000-0000-4000-8000-000000000001","color":"#85CADF","width":5,"mode":"brush","createdAt":"2026-08-16T10:00:01.000Z","points":[{"x":2,"y":2}]}]}'::jsonb,
+    'doodle-operation-spoof'
+  )
+);
+select is(
+  (select payload ->> 'error' from feature_test_results where label = 'doodle-spoof'),
+  'invalid_doodle',
+  'a Doodle member cannot forge strokes for the partner'
+);
+insert into feature_test_results values (
+  'doodle-missing-owner',
+  public.save_doodle_snapshot(
+    (select doodle_moment_id from feature_ids),
+    '{"version":2,"strokes":[{"id":"ownerless-stroke","color":"#85CADF","width":5,"mode":"brush","createdAt":"2026-08-16T10:00:01.000Z","points":[{"x":2,"y":2}]}]}'::jsonb,
+    'doodle-operation-missing-owner'
+  )
+);
+select is(
+  (select payload ->> 'error' from feature_test_results where label = 'doodle-missing-owner'),
+  'invalid_doodle',
+  'a Doodle stroke must declare its owner'
+);
+insert into feature_test_results values (
+  'doodle-invalid-points',
+  public.save_doodle_snapshot(
+    (select doodle_moment_id from feature_ids),
+    '{"version":2,"strokes":[{"id":"bad-points","userId":"60000000-0000-4000-8000-000000000002","color":"#85CADF","width":5,"mode":"brush","createdAt":"2026-08-16T10:00:01.000Z","points":null}]}'::jsonb,
+    'doodle-operation-invalid-points'
+  )
+);
+select is(
+  (select payload ->> 'error' from feature_test_results where label = 'doodle-invalid-points'),
+  'invalid_doodle',
+  'malformed Doodle points return a validation error'
+);
+
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', true);
 insert into feature_test_results values (
   'doodle-retry',
   public.save_doodle_snapshot(
@@ -336,6 +416,19 @@ select is(
   2,
   'concurrent Doodle snapshots merge both Users without losing order'
 );
+insert into feature_test_results values (
+  'doodle-partner-erase',
+  public.save_doodle_snapshot(
+    (select doodle_moment_id from feature_ids),
+    '{"version":3,"removedStrokeIds":["stroke-one"],"strokes":[{"id":"stroke-two","userId":"60000000-0000-4000-8000-000000000002","color":"#85CADF","width":5,"mode":"brush","createdAt":"2026-08-16T10:00:01.000Z","points":[{"x":4,"y":4}]}]}'::jsonb,
+    'doodle-operation-partner-erase'
+  )
+);
+select is(
+  (select payload ->> 'error' from feature_test_results where label = 'doodle-partner-erase'),
+  'invalid_doodle',
+  'a Doodle member cannot erase the partner strokes'
+);
 reset role;
 select is(
   (select jsonb_array_length(document -> 'strokes') from public.doodle_documents where moment_id = (select doodle_moment_id from feature_ids)),
@@ -353,6 +446,19 @@ select is(
   (select payload ->> 'status' from feature_test_results where label = 'doodle-complete-one'),
   'partially_submitted',
   'one Doodle completion leaves the Moment waiting for the partner'
+);
+insert into feature_test_results values (
+  'doodle-edit-after-complete',
+  public.save_doodle_snapshot(
+    (select doodle_moment_id from feature_ids),
+    '{"version":3,"strokes":[{"id":"stroke-one","userId":"60000000-0000-4000-8000-000000000001","color":"#F4714B","width":5,"mode":"brush","createdAt":"2026-08-16T10:00:00.000Z","points":[{"x":1,"y":1}]},{"id":"stroke-two","userId":"60000000-0000-4000-8000-000000000002","color":"#85CADF","width":5,"mode":"brush","createdAt":"2026-08-16T10:00:01.000Z","points":[{"x":4,"y":4}]},{"id":"late-stroke","userId":"60000000-0000-4000-8000-000000000001","color":"#F4714B","width":5,"mode":"brush","createdAt":"2026-08-16T10:00:02.000Z","points":[{"x":3,"y":3}]}]}'::jsonb,
+    'doodle-operation-after-complete'
+  )
+);
+select is(
+  (select payload ->> 'error' from feature_test_results where label = 'doodle-edit-after-complete'),
+  'invalid_doodle',
+  'a completed Doodle member cannot change the final document'
 );
 select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000002', true);
 insert into feature_test_results values (

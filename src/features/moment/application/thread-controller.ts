@@ -152,6 +152,7 @@ export class ThreadController {
       body: normalizeThreadMessage(body),
       clientMessageId: createClientMessageId(),
     };
+    const operation = this.operation;
     this.update({ busy: true, error: null, pending });
     try {
       const message = await this.repository.sendThreadMessage(
@@ -159,12 +160,17 @@ export class ThreadController {
         pending.body,
         pending.clientMessageId,
       );
+      if (operation !== this.operation || this.snapshot.memoryId !== memoryId) {
+        return;
+      }
       const messages = this.snapshot.messages.some((item) => item.id === message.id)
         ? this.snapshot.messages
         : [...this.snapshot.messages, message];
       this.update({ busy: false, error: null, messages, pending: null });
     } catch (error) {
-      this.update({ busy: false, error: errorCode(error), pending });
+      if (operation === this.operation && this.snapshot.memoryId === memoryId) {
+        this.update({ busy: false, error: errorCode(error), pending });
+      }
     }
   }
 

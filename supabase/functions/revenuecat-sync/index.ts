@@ -55,7 +55,14 @@ function syncEvent(appUserId: string, subscriber: JsonObject) {
     const store = stringValue(subscription?.store) ?? 'unknown';
     const active = expiresAtMs === null || expiresAtMs > now;
     const inGracePeriod = !active && gracePeriodExpiresAtMs !== null && gracePeriodExpiresAtMs > now;
-    const type = active ? 'INITIAL_PURCHASE' : inGracePeriod ? 'BILLING_ISSUE' : 'EXPIRATION';
+    const cancelled = timestampMs(subscription?.unsubscribe_detected_at) !== null;
+    const type = inGracePeriod
+      ? 'BILLING_ISSUE'
+      : !active
+        ? 'EXPIRATION'
+        : cancelled
+          ? 'CANCELLATION'
+          : 'INITIAL_PURCHASE';
     const eventId = [
       'sync',
       appUserId,

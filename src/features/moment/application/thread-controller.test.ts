@@ -112,4 +112,34 @@ describe('ThreadController', () => {
     expect(repository.calls).toHaveLength(0);
     expect(controller.getSnapshot().error).toBe('archiveReadOnly');
   });
+
+  it('does not append a delayed send response to a different Memory thread', async () => {
+    const repository = new FakeThreadRepository();
+    let resolveSend!: (message: ThreadMessage) => void;
+    repository.sendThreadMessage = jest.fn(
+      () => new Promise<ThreadMessage>((resolve) => {
+        resolveSend = resolve;
+      }),
+    );
+    const controller = new ThreadController(repository);
+    controller.open('memory-1');
+    await controller.refresh();
+
+    const sendRequest = controller.send('A note for the first Memory.');
+    repository.state = { canWrite: true, memoryId: 'memory-2', messages: [] };
+    controller.open('memory-2');
+    await controller.refresh();
+    resolveSend({
+      ...firstMessage,
+      body: 'A note for the first Memory.',
+      id: 'message-delayed',
+    });
+    await sendRequest;
+
+    expect(controller.getSnapshot()).toMatchObject({
+      memoryId: 'memory-2',
+      messages: [],
+      status: 'ready',
+    });
+  });
 });

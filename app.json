@@ -28,12 +28,14 @@
     "locales": {
       "en": {
         "ios": {
-          "NSCameraUsageDescription": "Pomelo uses your camera to create a Photo Moment."
+          "NSCameraUsageDescription": "Pomelo uses your camera to create a Photo Moment.",
+          "NSPhotoLibraryUsageDescription": "Pomelo uses your photo library to create a Photo Moment."
         }
       },
       "es": {
         "ios": {
-          "NSCameraUsageDescription": "Pomelo usa la cámara para crear vuestro Photo Moment."
+          "NSCameraUsageDescription": "Pomelo usa la cámara para crear vuestro Photo Moment.",
+          "NSPhotoLibraryUsageDescription": "Pomelo usa vuestra fototeca para crear un Photo Moment."
         }
       }
     },
@@ -46,7 +48,12 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
