@@ -76,9 +76,11 @@ export function SettingsScreen() {
       setAdvancedMoment(nextMoment);
       await moment.controller.refresh();
     } catch (error) {
-      setAdvanceError(
-        error instanceof DevelopmentToolsError ? error.code : 'unexpected',
-      );
+      const errorCode = error instanceof DevelopmentToolsError ? error.code : 'unexpected';
+      if (errorCode === 'momentInProgress') {
+        await moment.controller.refresh();
+      }
+      setAdvanceError(errorCode);
     } finally {
       setAdvanceBusy(false);
     }
